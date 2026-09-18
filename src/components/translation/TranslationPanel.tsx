@@ -20,6 +20,32 @@ function fieldName(path: string): string {
   return `${labels[parts[parts.length - 1]] || parts[parts.length - 1]} · ${path}`
 }
 
+function missingFieldName(path: string, isGermanUI: boolean): string {
+  const labels: Record<string, [string, string]> = {
+    slug: ['URL-Segment', 'URL slug'], title: ['Seitentitel', 'Page title'], metaTitle: ['Meta-Titel', 'Meta title'],
+    metaDescription: ['Meta-Beschreibung', 'Meta description'], layout: ['Seiteninhalt', 'Page content'],
+    headline: ['Überschrift', 'Heading'], content: ['Text', 'Text'], items: ['FAQ-Einträge', 'FAQ entries'],
+    question: ['Frage', 'Question'], answer: ['Antwort', 'Answer'], label: ['Linktext', 'Link label'],
+    name: ['Name', 'Name'], teaser: ['Kurzbeschreibung', 'Teaser'], caption: ['Bildunterschrift', 'Caption'],
+    alt: ['Alternativtext', 'Alt text'], siteName: ['Websitename', 'Site name'],
+  }
+  const parts = path.split('.')
+  const label = labels[parts[parts.length - 1]]?.[isGermanUI ? 0 : 1] || path
+  if (parts[0] === 'layout' && parts.length > 2) {
+    const block = `Block ${Number(parts[1]) + 1}`
+    const item = parts.indexOf('items')
+    const action = parts.indexOf('actions')
+    const suffix = item !== -1 && parts[item + 1] !== undefined && parts.length > item + 2
+      ? `${isGermanUI ? 'Eintrag' : 'Entry'} ${Number(parts[item + 1]) + 1} · `
+      : action !== -1 && parts[action + 1] !== undefined
+        ? `Link ${Number(parts[action + 1]) + 1} · ` : ''
+    return `${block} · ${suffix}${label}`
+  }
+  if (parts[0] === 'layout' && parts.length === 2) return `Block ${Number(parts[1]) + 1}`
+  if (parts[0] === 'navigation') return `Navigation ${Number(parts[1]) + 1} · ${label}`
+  return label
+}
+
 function FieldPreview({ value, kind }: { value: unknown; kind: ReviewCandidate['kind'] }) {
   if (kind === 'richText' && value && typeof value === 'object') {
     return <div className="translation-panel__rich"><RichText data={value as Parameters<typeof RichText>[0]['data']} /></div>
@@ -40,6 +66,7 @@ export default function TranslationPanel() {
   const pathname = usePathname()
   const [loading, setLoading] = useState(false)
   const [available, setAvailable] = useState(false)
+  const [missingFields, setMissingFields] = useState<string[]>([])
   const [candidates, setCandidates] = useState<ReviewCandidate[]>([])
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -54,8 +81,12 @@ export default function TranslationPanel() {
     if (id != null) params.set('id', String(id))
     fetch(`/api/admin-translate?${params}`, { credentials: 'same-origin', signal: controller.signal })
       .then((response) => response.json())
-      .then((result: { available?: boolean }) => setAvailable(result.available === true))
-      .catch(() => setAvailable(false))
+      .then((result: { available?: boolean; missingFields?: string[] }) => {
+        if (controller.signal.aborted) return
+        setAvailable(result.available === true)
+        setMissingFields(Array.isArray(result.missingFields) ? result.missingFields : [])
+      })
+      .catch(() => { if (!controller.signal.aborted) { setAvailable(false); setMissingFields([]) } })
     return () => controller.abort()
   }, [canLoad, current, entity, id])
 
@@ -64,6 +95,8 @@ export default function TranslationPanel() {
     setError('')
     setMessage('')
     setCandidates([])
+    setAvailable(false)
+    setMissingFields([])
     const params = new URLSearchParams(window.location.search)
     params.set('locale', next)
     startRouteTransition(() => router.push(`${pathname}?${params.toString()}`))
@@ -107,7 +140,11 @@ export default function TranslationPanel() {
     </div>
     <div className="translation-panel__actions">
       {available && <button type="button" onClick={() => void translate()} disabled={modified || loading || !canLoad}>{loading ? (isGermanUI ? 'Übersetze …' : 'Translating…') : (isGermanUI ? `Mit KI aus ${sourceLabel} übersetzen` : `Translate from ${sourceLabel} with AI`)}</button>}
-      <span>{modified ? (isGermanUI ? 'Bitte Änderungen speichern, bevor du die Sprache wechselst oder übersetzt.' : 'Save changes before switching languages or translating.') : !canLoad ? (isGermanUI ? 'Zuerst diesen Eintrag speichern.' : 'Save this item first.') : !available ? (isGermanUI ? `Der Übersetzungsbutton erscheint, sobald alle Pflichtfelder auf ${sourceLabel} gespeichert sind.` : `The translation button appears once all required ${sourceLabel} fields are saved.`) : (isGermanUI ? 'KI-Vorschläge ändern keine Felder ohne deine Bestätigung.' : 'AI suggestions do not change fields without your approval.')}</span>
+      {!modified && canLoad && !available && missingFields.length > 0 ? <div className="translation-panel__missing">
+        <p>{isGermanUI ? `Für die Übersetzung fehlen auf ${sourceLabel} noch:` : `Still missing for translation from ${sourceLabel}:`}</p>
+        <ul>{missingFields.slice(0, 3).map((path) => <li key={path}>{missingFieldName(path, isGermanUI)}</li>)}</ul>
+        {missingFields.length > 3 && <p>{isGermanUI ? `${missingFields.length - 3} weitere` : `${missingFields.length - 3} more`}</p>}
+      </div> : <span>{modified ? (isGermanUI ? 'Bitte Änderungen speichern, bevor du die Sprache wechselst oder übersetzt.' : 'Save changes before switching languages or translating.') : !canLoad ? (isGermanUI ? 'Zuerst diesen Eintrag speichern.' : 'Save this item first.') : !available ? (isGermanUI ? `Der Übersetzungsbutton erscheint, sobald alle Pflichtfelder auf ${sourceLabel} gespeichert sind.` : `The translation button appears once all required ${sourceLabel} fields are saved.`) : (isGermanUI ? 'KI-Vorschläge ändern keine Felder ohne deine Bestätigung.' : 'AI suggestions do not change fields without your approval.')}</span>}
     </div>
     {message && <p role="status" className="translation-panel__success">{message}</p>}
     {error && <p role="alert" className="translation-panel__error">{error}</p>}

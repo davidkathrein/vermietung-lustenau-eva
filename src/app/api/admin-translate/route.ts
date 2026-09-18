@@ -3,7 +3,7 @@ import { getPayload } from 'payload'
 
 import { type ContentLocale, type TranslationEntity } from '@/lib/translation-fields'
 import { translateFields } from '@/lib/translation'
-import { buildReviewCandidates, reviewFields, sourceIsComplete, translationUnits } from '@/lib/translation-review'
+import { buildReviewCandidates, missingTranslationFields, reviewFields, sourceIsComplete, translationUnits } from '@/lib/translation-review'
 
 export const runtime = 'nodejs'
 
@@ -34,7 +34,8 @@ export async function GET(request: Request): Promise<Response> {
     const sourceLocale = input.targetLocale === 'de' ? 'en' : 'de'
     const source = await sourceDocument(payload, auth.user, input.entity, input.id, sourceLocale)
     const data = source as unknown as Record<string, unknown>
-    return Response.json({ available: sourceIsComplete(input.entity, data) && reviewFields(input.entity, data).length > 0 }, { headers: { 'Cache-Control': 'no-store' } })
+    const missingFields = missingTranslationFields(input.entity, data)
+    return Response.json({ available: missingFields.length === 0 && reviewFields(input.entity, data).length > 0, missingFields }, { headers: { 'Cache-Control': 'no-store' } })
   } catch { return Response.json({ available: false }) }
 }
 

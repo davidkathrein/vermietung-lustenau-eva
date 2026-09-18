@@ -29,6 +29,18 @@ test('switches content tabs and applies a translation to the target form', async
     await page.getByRole('tab', { name: 'English' }).click()
     await expect(page.locator('#field-name')).toHaveValue('Old English')
 
+    const missingRoute = async (route: Parameters<Parameters<typeof page.route>[1]>[0]) => {
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ available: false, missingFields: [
+        'slug', 'name', 'teaser', 'seo.metaTitle', 'layout.0.headline',
+      ] }) })
+    }
+    await page.route('**/api/admin-translate?**', missingRoute)
+    await page.reload()
+    await expect(page.locator('.translation-panel__missing li')).toHaveText(['URL slug', 'Name', 'Teaser'])
+    await expect(page.locator('.translation-panel__missing')).toContainText('2 more')
+    await expect(page.locator('.translation-panel__missing')).not.toContainText('Meta title')
+    await page.unroute('**/api/admin-translate?**', missingRoute)
+
     await page.route('**/api/admin-translate?**', async (route) => {
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ available: true }) })
     })
@@ -43,6 +55,7 @@ test('switches content tabs and applies a translation to the target form', async
       })
     })
 
+    await page.reload()
     await page.getByRole('button', { name: /Translate from Deutsch with AI/ }).click()
     await page.getByRole('button', { name: 'Accept all' }).click()
     await expect(page.locator('#field-name')).toHaveValue('Apartment One')

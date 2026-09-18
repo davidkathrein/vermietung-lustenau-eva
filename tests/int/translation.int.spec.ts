@@ -3,9 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getPayload } from 'payload'
 
 import config from '../../src/payload.config'
-import { POST } from '../../src/app/api/admin-translate/route'
+import { GET, POST } from '../../src/app/api/admin-translate/route'
 import { translateFields } from '../../src/lib/translation'
-import { buildReviewCandidates, reviewFields, sourceIsComplete, translationUnits } from '../../src/lib/translation-review'
+import { buildReviewCandidates, missingTranslationFields, reviewFields, sourceIsComplete, translationUnits } from '../../src/lib/translation-review'
 
 const originalKey = process.env.OPENROUTER_API_KEY
 
@@ -25,6 +25,42 @@ describe('admin translation', () => {
     expect(sourceIsComplete('pages', page)).toBe(true)
     expect(sourceIsComplete('pages', { ...page, layout: [{ blockType: 'content', headline: 'Willkommen', action: { kind: 'internal' } }] })).toBe(true)
     expect(sourceIsComplete('pages', { ...page, layout: [{ blockType: 'content', headline: 'Willkommen', action: { kind: 'internal', reference: 2 } }] })).toBe(false)
+  })
+  it('lists every missing source field in the same order used by the editor', () => {
+    const page = { slug: '', title: '', seo: { metaTitle: '', metaDescription: '' }, layout: [
+      { blockType: 'hero', headline: '', actions: [{ link: {} }, { link: { label: 'Explore' } }] },
+      { blockType: 'faq', headline: 'Questions', items: [{ question: '', answer: null }] },
+    ] }
+    expect(missingTranslationFields('pages', page)).toEqual([
+      'slug', 'title', 'seo.metaTitle', 'seo.metaDescription', 'layout.0.headline',
+      'layout.0.actions.0.link.label', 'layout.1.items.0.question', 'layout.1.items.0.answer',
+    ])
+    expect(sourceIsComplete('pages', page)).toBe(false)
+    expect(missingTranslationFields('site-settings', { siteName: '', navigation: [{ link: {} }] }))
+      .toEqual(['siteName', 'navigation.0.link.label'])
+    expect(missingTranslationFields('pages', { ...page, layout: [] })).toContain('layout')
+  })
+
+  it('returns missing fields from the saved source locale without exposing other content', async () => {
+    const payload = await getPayload({ config })
+    const user = { email: `missing-${Date.now()}@example.invalid`, password: 'local-test-password' }
+    const admin = await payload.create({ collection: 'users', data: user })
+    const unit = await payload.create({
+      collection: 'accommodations', locale: 'de',
+      data: { slug: `missing-${Date.now()}`, name: 'Wohnung Eins', teaser: 'Deutscher Text', sleeps: 4 },
+    })
+    try {
+      const login = await payload.login({ collection: 'users', data: user })
+      const response = await GET(new Request(`http://localhost/api/admin-translate?entity=accommodations&id=${unit.id}&targetLocale=de`, {
+        headers: { Authorization: `JWT ${login.token}` },
+      }))
+      expect(response.status).toBe(200)
+      expect(response.headers.get('Cache-Control')).toBe('no-store')
+      expect(await response.json()).toEqual({ available: false, missingFields: ['slug', 'name', 'teaser'] })
+    } finally {
+      await payload.delete({ collection: 'accommodations', id: unit.id })
+      await payload.delete({ collection: 'users', id: admin.id })
+    }
   })
   it('requires authentication before attempting translation', async () => {
     const request = new Request('http://localhost/api/admin-translate', {

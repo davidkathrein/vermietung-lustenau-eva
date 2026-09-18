@@ -55,6 +55,15 @@
   font-size: .875rem;
 }
 
+.translation-panel__missing {
+  color: var(--theme-elevation-700);
+  font-size: .875rem;
+}
+
+.translation-panel__missing p { margin: 0; }
+.translation-panel__missing ul { margin: .4rem 0; padding-left: 1.4rem; }
+.translation-panel__missing li + li { margin-top: .2rem; }
+
 .translation-panel__success { color: var(--theme-success-700); }
 .translation-panel__error { color: var(--theme-error-600); }
 

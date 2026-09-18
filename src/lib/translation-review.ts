@@ -12,10 +12,6 @@ function nonempty(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0
 }
 
-function linksAreComplete(rows: unknown): boolean {
-  return !Array.isArray(rows) || rows.every((row) => row && typeof row === 'object' && nonempty(at(row, 'link.label')))
-}
-
 function linkIsConfigured(value: unknown): boolean {
   if (!value || typeof value !== 'object') return false
   const link = value as Record<string, unknown>
@@ -41,26 +37,52 @@ function addRichText(fields: ReviewField[], path: string, value: unknown) {
   }
 }
 
-export function sourceIsComplete(entity: TranslationEntity, document: Record<string, unknown>): boolean {
+export function missingTranslationFields(entity: TranslationEntity, document: Record<string, unknown>): string[] {
+  const missing: string[] = []
+  const requireText = (path: string) => { if (!nonempty(at(document, path))) missing.push(path) }
   if (entity === 'pages') {
-    if (!nonempty(document.slug) || !nonempty(document.title) || !nonempty(at(document, 'seo.metaTitle')) || !nonempty(at(document, 'seo.metaDescription'))) return false
-    if (!Array.isArray(document.layout) || document.layout.length === 0) return false
-    return document.layout.every((item) => {
-      if (!item || typeof item !== 'object') return false
+    for (const path of ['slug', 'title', 'seo.metaTitle', 'seo.metaDescription']) requireText(path)
+    if (!Array.isArray(document.layout) || document.layout.length === 0) missing.push('layout')
+    else document.layout.forEach((item, index) => {
+      if (!item || typeof item !== 'object') { missing.push(`layout.${index}`); return }
       const block = item as Record<string, unknown>
-      if (block.blockType === 'richText') return richTextStrings(block.content).length > 0
-      if (!nonempty(block.headline)) return false
-      if (block.blockType === 'faq') return Array.isArray(block.items) && block.items.length > 0 && block.items.every((row) => row && typeof row === 'object' && nonempty((row as Record<string, unknown>).question) && richTextStrings((row as Record<string, unknown>).answer).length > 0)
-      if (block.blockType === 'cta') return nonempty(at(block, 'action.label'))
-      if (block.blockType === 'hero') return linksAreComplete(block.actions)
-      if (block.blockType === 'content' && linkIsConfigured(block.action)) return nonempty(at(block, 'action.label'))
-      return true
+      const prefix = `layout.${index}`
+      if (block.blockType === 'richText') {
+        if (richTextStrings(block.content).length === 0) missing.push(`${prefix}.content`)
+        return
+      }
+      if (!nonempty(block.headline)) missing.push(`${prefix}.headline`)
+      if (block.blockType === 'faq') {
+        if (!Array.isArray(block.items) || block.items.length === 0) missing.push(`${prefix}.items`)
+        else block.items.forEach((row, rowIndex) => {
+          if (!nonempty(at(row, 'question'))) missing.push(`${prefix}.items.${rowIndex}.question`)
+          if (richTextStrings(at(row, 'answer')).length === 0) missing.push(`${prefix}.items.${rowIndex}.answer`)
+        })
+      }
+      if (block.blockType === 'cta' || (block.blockType === 'content' && linkIsConfigured(block.action))) {
+        if (!nonempty(at(block, 'action.label'))) missing.push(`${prefix}.action.label`)
+      }
+      if (block.blockType === 'hero' && Array.isArray(block.actions)) block.actions.forEach((row, rowIndex) => {
+        if (!nonempty(at(row, 'link.label'))) missing.push(`${prefix}.actions.${rowIndex}.link.label`)
+      })
+    })
+  } else if (entity === 'accommodations') {
+    for (const path of ['slug', 'name', 'teaser']) requireText(path)
+  } else if (entity === 'instagram-posts') {
+    requireText('caption')
+  } else if (entity === 'media') {
+    requireText('alt')
+  } else {
+    requireText('siteName')
+    if (Array.isArray(document.navigation)) document.navigation.forEach((row, index) => {
+      if (!nonempty(at(row, 'link.label'))) missing.push(`navigation.${index}.link.label`)
     })
   }
-  if (entity === 'accommodations') return nonempty(document.slug) && nonempty(document.name) && nonempty(document.teaser)
-  if (entity === 'instagram-posts') return nonempty(document.caption)
-  if (entity === 'media') return nonempty(document.alt)
-  return nonempty(document.siteName) && linksAreComplete(document.navigation)
+  return missing
+}
+
+export function sourceIsComplete(entity: TranslationEntity, document: Record<string, unknown>): boolean {
+  return missingTranslationFields(entity, document).length === 0
 }
 
 export function reviewFields(entity: TranslationEntity, document: Record<string, unknown>): ReviewField[] {
