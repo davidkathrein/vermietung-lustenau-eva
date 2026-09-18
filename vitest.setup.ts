@@ -3,4 +3,4 @@
 // Load .env files
 import 'dotenv/config'
 
-process.env.DATABASE_URL = 'file:./hausvermietung-lustenau.test.db'
+process.env.DATABASE_URL = 'file:./hausvermietung-lustenau.integration.db'

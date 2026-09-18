@@ -1,0 +1,118 @@
+.translation-panel {
+  margin: 0 0 1.75rem;
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: var(--border-radius-m);
+  padding: 1rem;
+  background: var(--theme-elevation-50);
+}
+
+.translation-panel__tabs {
+  display: flex;
+  border-bottom: 1px solid var(--theme-elevation-250);
+  gap: .35rem;
+  margin-bottom: 1rem;
+}
+
+.translation-panel__tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--theme-text);
+  font: inherit;
+  cursor: pointer;
+  padding: .55rem .85rem;
+}
+
+.translation-panel__tabs button[aria-selected='true'] {
+  border-bottom-color: var(--theme-success-500);
+  font-weight: 600;
+}
+
+.translation-panel button:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+.translation-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .8rem;
+  align-items: center;
+}
+
+.translation-panel__actions button {
+  border: 1px solid var(--theme-elevation-350);
+  border-radius: var(--border-radius-s);
+  background: var(--theme-elevation-150);
+  color: var(--theme-text);
+  cursor: pointer;
+  font: inherit;
+  padding: .55rem .85rem;
+}
+
+.translation-panel__actions span {
+  color: var(--theme-elevation-700);
+  font-size: .875rem;
+}
+
+.translation-panel__success { color: var(--theme-success-700); }
+.translation-panel__error { color: var(--theme-error-600); }
+
+.translation-panel__review {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--theme-elevation-250);
+  padding-top: 1rem;
+}
+
+.translation-panel__review-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.translation-panel__review-header h3 { margin: 0; }
+
+.translation-panel__review button {
+  border: 1px solid var(--theme-elevation-350);
+  border-radius: var(--border-radius-s);
+  background: var(--theme-elevation-150);
+  color: var(--theme-text);
+  cursor: pointer;
+  font: inherit;
+  padding: .55rem .85rem;
+}
+
+.translation-panel__field {
+  margin: 0 0 1rem;
+  border: 1px solid var(--theme-elevation-250);
+  border-radius: var(--border-radius-m);
+  padding: 1rem;
+}
+
+.translation-panel__field h4 { margin: 0 0 .8rem; }
+
+.translation-panel__comparison {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .75rem;
+  margin-bottom: .8rem;
+}
+
+.translation-panel__comparison > div {
+  min-width: 0;
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: var(--border-radius-s);
+  padding: .8rem;
+  overflow-wrap: anywhere;
+}
+
+.translation-panel__comparison strong { display: block; margin-bottom: .5rem; }
+.translation-panel__comparison p { margin: 0 0 .5rem; white-space: pre-wrap; }
+.translation-panel__rich > * { max-width: 100%; }
+
+@media (max-width: 850px) {
+  .translation-panel__comparison { grid-template-columns: 1fr; }
+}

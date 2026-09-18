@@ -1,82 +1,47 @@
-# Hausvermietung Lustenau
+# Wohnen in Lustenau
 
-Eigenständiges Payload-Projekt für drei Kurzzeitwohnungen in Lustenau. Das öffentliche Frontend ist bewusst nur ein Platzhalter; es wird separat gestaltet und umgesetzt.
+Zweisprachige Website (Deutsch und Englisch) mit Payload CMS, Next.js und einem gemeinsamen Kalender für drei Wohnungen. Wohnung 1 ist alternativ als Seminarraum nutzbar. Die Seite verwendet das bestehende Theme und Shadcn-Komponenten. Bis echte Fotos hochgeladen werden, zeigt das öffentliche Frontend neutrale Flächen statt erfundener Immobilienbilder.
 
 ## Lokal starten
 
 ```bash
 pnpm install
 cp .env.example .env
-# PAYLOAD_SECRET in .env durch einen langen, zufälligen Wert ersetzen
-pnpm seed:local
+# PAYLOAD_SECRET in .env setzen
+pnpm payload migrate
+pnpm seed:content
 pnpm dev
 ```
 
-Payload läuft unter `http://localhost:3000/admin`. Beim ersten Aufruf den ersten Admin-Benutzer anlegen. Die lokale SQLite-Datei und `.env` sind nicht im Git-Repository.
+`/` leitet permanent auf `/de` weiter. Die zweite Sprache liegt unter `/en`. Das CMS ist unter `/admin` erreichbar. Der Seed legt drei Wohnungen, `homepage`, Wohnungs- und Kontaktseite mit DE/EN-Inhalten an und veröffentlicht sie erst nach Befüllung beider Sprachen. Vorhandene redaktionell bearbeitete Datensätze bleiben unangetastet. Die SQLite- und PostgreSQL-Migrationen liegen getrennt unter `src/migrations/` und `src/postgres-migrations/`. Automatisches Schema-Pushing ist deaktiviert. Der nächste Vercel-Build führt Migration, idempotenten Content-Seed und Build in dieser Reihenfolge aus; Produktionsdaten werden nicht allein durch lokale Änderungen befüllt.
 
-`pnpm seed:local` legt drei **lokale Beispieldatensätze** und die bekannten Adressdaten an, falls sie fehlen. Die Namen sind Platzhalter. Wohnung 1 ist vorläufig als die seminarfähige Wohnung markiert. Der Seed überschreibt vorhandene Wohnungen nicht.
+## Redaktion
 
-## Daten in Payload
+- Seiten bestehen aus Hero-, Fließtext-, Text/Bild-, CTA-, FAQ-, Wohnungsübersicht- und Anfrage-Blöcken. Die Bilder unter `public/admin/block-previews/` erscheinen nur im Admin als Blockvorschau. Die Wohnungsübersicht lädt veröffentlichte Wohnungen automatisch.
+- Seiten und Wohnungen haben Entwürfe, Autosave und sprachspezifische Slugs. Das Seitenformular bietet eine eingebettete Live-Vorschau. Eine Veröffentlichung erfordert beide vollständig ausgefüllten Sprachen einschließlich aller Pflicht-Metadaten. Alte öffentliche Slugs erhalten automatische permanente Weiterleitungen.
+- Der Sprachwechsel im Bearbeitungsformular ist unabhängig von der Sprache der Admin-Oberfläche. Die KI-Übersetzung wird erst bei vollständiger Quellsprache angeboten. Sie liefert Vorschläge für Texte, Rich-Text-Formatierung und Slugs; jedes Feld kann einzeln oder über „Alles übernehmen“ ins Formular übernommen werden. Speichern und Veröffentlichen bleiben getrennte, manuelle Schritte. `OPENROUTER_API_KEY` ist nur serverseitig nötig.
+- Medien haben sprachspezifischen Alternativtext und eine optionale sprachspezifische Caption. Eine gepflegte Caption erscheint immer als Overlay im Bild. Galerien haben keine zweite Caption-Quelle.
+- Interne Links speichern direkte Beziehungen zu Seiten oder Wohnungen; zusätzlich sind Web-, Mail-, Telefon- und Ankerlinks möglich. Die Hauptnavigation wird in Website-Einstellungen gepflegt, der Footer listet alle veröffentlichten Wohnungen automatisch.
 
-- **Wohnungen:** DE/EN-Titel und Texte, Personenzahl, Betten, Fotos, Grundriss und private iCal-Links je Plattform. Jede der drei physischen Wohnungen hat genau einen Datensatz. Der Seminarraum ist eine alternative Nutzung von Wohnung 1 und kein vierter Raum.
-- **Website-Einstellungen:** DE/EN-Kopftexte, Adresse, Betreiber und später Kontaktdaten.
-- **Anfragen:** Übernachtung für eine bis drei Wohnungen oder ganztägiges Seminar für die seminarfähige Wohnung. Diese Datensätze sind nur im Admin lesbar.
-- **Manuelle Sperren:** Starttag inklusive, Endtag exklusiv. Sie erscheinen im Website-Kalender. Sie übertragen sich nicht automatisch zu Airbnb oder Booking.com.
-- **Medien:** Fotos und Grundrisse mit Pflichtfeld für Alternativtext.
+## Anfragen und Kalender
 
-Neue Wohnungen sind standardmäßig unveröffentlicht. Die Beispieldaten sind lokal veröffentlicht, damit die API für die Frontendentwicklung Antworten liefert.
+Anfragen sind unverbindlich und reservieren nichts. Ein bestätigter Aufenthalt oder Seminartag erzeugt eine aktive Sperre im gemeinsamen Wohnungskalender. Eine Stornierung deaktiviert die Sperre, löscht sie aber nicht. Bekannte Konflikte blockieren eine Zusage; bei fehlender oder ausgefallener Plattform-Verbindung ist dafür eine ausdrücklich gesetzte Admin-Ausnahme nötig. Ein Seminar kollidiert auch mit einem Aufenthalt, der am Seminartag an- oder abreist.
 
-## Schnittstellen für das Frontend
+Der öffentliche Verfügbarkeitsstatus kombiniert manuelle Sperren mit Airbnb- und Booking.com-iCal-Feeds. Er behauptet bei fehlenden/fehlerhaften Feeds keine freie Verfügbarkeit. `GET /api/public-availability?locale=de&from=2026-10-01&through=2026-10-31` liefert belegte Tage und je Wohnung `ready`, `not-connected` oder `error`. Die Feed-URLs bleiben privat. `POST /api/public-inquiries` ist erst mit `ENABLE_PUBLIC_INQUIRIES=true` freigeschaltet.
 
-Das Frontend kann im selben Next.js-Projekt unter `src/app/(frontend)/` entstehen. Öffentliche Inhalte liefert Payload bereits unter `GET /api/accommodations?locale=de&sort=sortOrder` und `GET /api/globals/site-settings?locale=en`. Nicht veröffentlichte Wohnungen und private iCal-Links sind in der öffentlichen REST-Antwort nicht enthalten.
+Aktive Sperren werden über einen signierten iCal-Link exportiert, damit Airbnb und Booking.com sie importieren können. Den Link zeigt das jeweilige Wohnungsformular nach Konfiguration von `ICAL_EXPORT_SECRET` an. Er enthält keine Gästedaten und kann durch Wechsel des Secrets ungültig gemacht werden. iCal-Synchronisierung ist verzögert und ersetzt keine manuelle Kontrolle vor einer Zusage.
 
-`GET /api/public-availability?locale=de&from=2026-10-01&through=2026-10-31` liefert je Wohnung einen Status und belegte Datumswerte:
+Ein GitHub-Actions-Workflow prüft verbundene Feeds ungefähr alle 30 Minuten über `/api/internal/calendar-check`. Dafür braucht die Website `ICAL_MONITOR_TOKEN` und GitHub die Secrets `CALENDAR_CHECK_TOKEN` (gleicher Wert) und `CALENDAR_CHECK_URL` (vollständige API-URL). Nach drei aufeinanderfolgenden Fehlern geht einmalig eine Warnung an `SUPPORT_EMAIL` und die Kontakt-E-Mail aus Website-Einstellungen; bei Erholung eine Entwarnung. `RESEND_API_KEY` und `EMAIL_FROM` aktivieren den Versand. Solange Resend nicht eingerichtet ist, werden keine E-Mails gesendet. Geplante GitHub-Actions-Läufe sind best effort, nicht sekundengenau.
 
-```json
-{
-  "from": "2026-10-01",
-  "through": "2026-10-31",
-  "units": [
-    {
-      "id": 1,
-      "slug": "wohnung-1",
-      "name": "Wohnung 1",
-      "sleeps": 4,
-      "seminarCapable": true,
-      "accommodationId": 1,
-      "state": "not-connected",
-      "blockedDates": []
-    }
-  ]
-}
+## Vor öffentlicher Freigabe
+
+Echte Wohnungsfotos und Grundrisse, Kontakt-E-Mail und -Telefon, Plattform-iCal-Links sowie die Resend-Domain müssen ergänzt und mit echten Inseraten geprüft werden. Anfragen bleiben bis zur bewussten Freischaltung deaktiviert. Der Seed enthält realistische, aber redaktionell zu prüfende Beschreibungstexte und keine Platzhalter-Kennzeichnung.
+
+## Prüfungen
+
+```bash
+pnpm tsc --noEmit
+pnpm test:int
+pnpm build
+pnpm lint
 ```
-
-Nur bei `state: "ready"` darf das Frontend nicht aufgeführte Tage als frei anzeigen. `not-connected` und `error` bedeuten **unbekannte Verfügbarkeit**, auch wenn `blockedDates` leer ist. Manuelle Sperren stehen immer in `blockedDates`; die übrigen Tage bleiben bei fehlenden oder fehlerhaften Feeds unbekannt. Die iCal-Links werden nur auf dem Server abgerufen. Der Abruf prüft die Hostnamen auf Airbnb oder Booking.com und begrenzt Laufzeit und Dateigröße.
-
-`POST /api/public-inquiries` akzeptiert JSON mit `kind` (`stay` oder `seminar`), `accommodationSlugs`, `arrival`, bei Übernachtung `departure`, `name`, `email`, `guests` sowie optional `phone` und `message`. Das optionale Feld `company` ist ein unsichtbares Spam-Feld. Beispiel:
-
-```json
-{
-  "kind": "stay",
-  "accommodationSlugs": ["wohnung-1", "wohnung-2"],
-  "arrival": "2026-10-05",
-  "departure": "2026-10-07",
-  "name": "Beispielperson",
-  "email": "beispiel@example.invalid",
-  "guests": 6
-}
-```
-
-Für Übernachtungen gelten mindestens zwei Nächte. Eine Seminaranfrage betrifft genau die seminarfähige Wohnung. Die API speichert Anfragen; sie **reserviert keine Zeiten**. In Produktion antwortet der Endpunkt mit 503, bis `ENABLE_PUBLIC_INQUIRIES=true` ausdrücklich gesetzt ist.
-
-## Vor Veröffentlichung
-
-Die Airbnb- und Booking.com-Inserate müssen angelegt und ihre iCal-Links je Wohnung in Payload eingetragen werden. Der beidseitige Plattformabgleich und manuelle Sperren müssen mit echten Inseraten getestet werden. iCal hat eine Verzögerung; die Website nimmt daher nur Anfragen an. Nach einer Zusage müssen die betroffenen Nächte auf beiden Plattformen manuell gesperrt werden.
-
-## Vercel-Vorschau mit Neon und Blob
-
-Lokal bleibt SQLite als Datei aktiv. `vercel env pull .env.local --environment=development` lädt die lokale Konfiguration; `DATABASE_URL` zeigt dabei auf die lokale SQLite-Datei. In Vercel zeigt `DATABASE_URL` für **Preview** auf einen eigenen Neon-Branch und für **Production** auf den Neon-Branch `production` in Frankfurt. `PAYLOAD_SECRET` ist für alle drei Vercel-Umgebungen separat gesetzt. Zugangsdaten gehören nicht ins Git-Repository. Payload wählt bei einer Postgres-URL den Postgres-Adapter, sonst SQLite. Die separaten initialen Migrationen liegen unter `src/postgres-migrations/` und `src/migrations/`. Vercels Build Command führt vor `pnpm build` automatisch `pnpm payload migrate` aus. Der lokale Beispieldaten-Seed wird nicht automatisch nach Neon kopiert. Die Integrationstests nutzen eine eigene lokale SQLite-Datei; eine zusätzliche Neon-Testdatenbank ist derzeit nicht nötig.
-
-Vercel Blob ist für die Medien-Collection vorbereitet. Der öffentliche Blob Store `hausvermietung-lustenau-media` in Frankfurt ist mit Preview und Production verbunden; sein `BLOB_READ_WRITE_TOKEN` ist dort als geheime Umgebungsvariable hinterlegt. Ohne den Token verwendet die lokale Entwicklung weiterhin das Dateisystem. Das Plugin verwendet direkte Browser-Uploads, damit größere Bilder nicht am Upload-Limit einer Vercel Function scheitern.
-
-Außerdem fehlen echte Fotos, Grundrisse, Preise, Kontakt-E-Mail, Datenschutztext, E-Mail-Benachrichtigung für neue Anfragen und ein dauerhafter Schutz gegen Formularspam. Für den Livebetrieb sind eine dauerhafte Datenbank und Medienspeicherung festzulegen. Diese Punkte sind keine Voraussetzungen für die lokale Frontendentwicklung, aber für eine Veröffentlichung.

@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 export const runtime = 'nodejs'
 
 type InquiryInput = {
+  locale?: unknown
   kind?: unknown
   accommodationSlugs?: unknown
   arrival?: unknown
@@ -51,6 +52,7 @@ export async function POST(request: Request): Promise<Response> {
   if (input.company) return Response.json({ ok: true }, { status: 202 })
 
   const kind = input.kind
+  const locale = input.locale === 'en' ? 'en' : 'de'
   const slugs = input.accommodationSlugs
   const arrival = text(input.arrival, 10)
   const departure = text(input.departure, 10)
@@ -85,7 +87,9 @@ export async function POST(request: Request): Promise<Response> {
   const payload = await getPayload({ config })
   const { docs } = await payload.find({
     collection: 'accommodations',
-    where: { and: [{ slug: { in: slugs as string[] } }, { published: { equals: true } }] },
+    where: { and: [{ slug: { in: slugs as string[] } }, { published: { equals: true } }, { _status: { equals: 'published' } }] },
+    locale,
+    fallbackLocale: false,
     depth: 0,
     limit: 3,
   })

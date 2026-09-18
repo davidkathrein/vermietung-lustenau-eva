@@ -69,9 +69,12 @@ export interface Config {
   collections: {
     users: User;
     media: Media;
+    pages: Page;
     accommodations: Accommodation;
     'manual-blocks': ManualBlock;
     inquiries: Inquiry;
+    'calendar-health': CalendarHealth;
+    'slug-redirects': SlugRedirect;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -81,9 +84,12 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    pages: PagesSelect<false> | PagesSelect<true>;
     accommodations: AccommodationsSelect<false> | AccommodationsSelect<true>;
     'manual-blocks': ManualBlocksSelect<false> | ManualBlocksSelect<true>;
     inquiries: InquiriesSelect<false> | InquiriesSelect<true>;
+    'calendar-health': CalendarHealthSelect<false> | CalendarHealthSelect<true>;
+    'slug-redirects': SlugRedirectsSelect<false> | SlugRedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -159,6 +165,7 @@ export interface User {
 export interface Media {
   id: number;
   alt: string;
+  caption?: string | null;
   prefix?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -171,6 +178,193 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pages".
+ */
+export interface Page {
+  id: number;
+  internalName: string;
+  slug: string;
+  title: string;
+  seo: {
+    metaTitle: string;
+    metaDescription: string;
+    image?: (number | null) | Media;
+  };
+  layout: (
+    | {
+        eyebrow?: string | null;
+        headline: string;
+        intro?: string | null;
+        image?: (number | null) | Media;
+        actions?:
+          | {
+              link: {
+                label: string;
+                kind: 'internal' | 'url' | 'email' | 'phone' | 'anchor';
+                reference?:
+                  | ({
+                      relationTo: 'pages';
+                      value: number | Page;
+                    } | null)
+                  | ({
+                      relationTo: 'accommodations';
+                      value: number | Accommodation;
+                    } | null);
+                url?: string | null;
+                email?: string | null;
+                phone?: string | null;
+                anchor?: string | null;
+                newTab?: boolean | null;
+              };
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'hero';
+      }
+    | {
+        headline?: string | null;
+        content: {
+          root: {
+            type: string;
+            children: {
+              type: any;
+              version: number;
+              [k: string]: unknown;
+            }[];
+            direction: ('ltr' | 'rtl') | null;
+            format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+            indent: number;
+            version: number;
+          };
+          [k: string]: unknown;
+        };
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'richText';
+      }
+    | {
+        eyebrow?: string | null;
+        headline: string;
+        intro?: string | null;
+        action: {
+          label: string;
+          kind: 'internal' | 'url' | 'email' | 'phone' | 'anchor';
+          reference?:
+            | ({
+                relationTo: 'pages';
+                value: number | Page;
+              } | null)
+            | ({
+                relationTo: 'accommodations';
+                value: number | Accommodation;
+              } | null);
+          url?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          anchor?: string | null;
+          newTab?: boolean | null;
+        };
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'cta';
+      }
+    | {
+        eyebrow?: string | null;
+        headline: string;
+        intro?: string | null;
+        body?: {
+          root: {
+            type: string;
+            children: {
+              type: any;
+              version: number;
+              [k: string]: unknown;
+            }[];
+            direction: ('ltr' | 'rtl') | null;
+            format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+            indent: number;
+            version: number;
+          };
+          [k: string]: unknown;
+        } | null;
+        image?: (number | null) | Media;
+        imageSide?: ('right' | 'left') | null;
+        action?: {
+          label?: string | null;
+          kind?: ('internal' | 'url' | 'email' | 'phone' | 'anchor') | null;
+          reference?:
+            | ({
+                relationTo: 'pages';
+                value: number | Page;
+              } | null)
+            | ({
+                relationTo: 'accommodations';
+                value: number | Accommodation;
+              } | null);
+          url?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          anchor?: string | null;
+          newTab?: boolean | null;
+        };
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'content';
+      }
+    | {
+        eyebrow?: string | null;
+        headline: string;
+        intro?: string | null;
+        items: {
+          question: string;
+          answer: {
+            root: {
+              type: string;
+              children: {
+                type: any;
+                version: number;
+                [k: string]: unknown;
+              }[];
+              direction: ('ltr' | 'rtl') | null;
+              format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+              indent: number;
+              version: number;
+            };
+            [k: string]: unknown;
+          };
+          id?: string | null;
+        }[];
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'faq';
+      }
+    | {
+        eyebrow?: string | null;
+        headline: string;
+        intro?: string | null;
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'accommodationOverview';
+      }
+    | {
+        eyebrow?: string | null;
+        headline: string;
+        intro?: string | null;
+        mode: 'both' | 'stay' | 'seminar';
+        accommodation?: (number | null) | Accommodation;
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'inquiry';
+      }
+  )[];
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -190,13 +384,12 @@ export interface Accommodation {
   gallery?:
     | {
         image: number | Media;
-        caption?: string | null;
         id?: string | null;
       }[]
     | null;
   floorplan?: (number | null) | Media;
   /**
-   * Diese privaten Links bleiben auf dem Server und erscheinen nicht im öffentlichen API.
+   * These private links stay on the server and are not exposed by the public API.
    */
   ical?: {
     airbnb?: string | null;
@@ -206,9 +399,10 @@ export interface Accommodation {
   published?: boolean | null;
   updatedAt: string;
   createdAt: string;
+  _status?: ('draft' | 'published') | null;
 }
 /**
- * Sperrt die Tage im Website-Kalender. Airbnb und Booking.com müssen separat gesperrt werden.
+ * Blocks dates on the website and in the private calendar export. Platforms import calendars with a delay.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "manual-blocks".
@@ -217,14 +411,17 @@ export interface ManualBlock {
   id: number;
   accommodation: number | Accommodation;
   /**
-   * Erster gesperrter Tag
+   * First blocked day
    */
   startDate: string;
   /**
-   * Erster wieder freier Tag (ausschließlich)
+   * First free day (exclusive)
    */
   endDate: string;
   reason: string;
+  inquiry?: (number | null) | Inquiry;
+  usage?: ('manual' | 'stay' | 'seminar') | null;
+  active?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -243,7 +440,39 @@ export interface Inquiry {
   phone?: string | null;
   guests?: number | null;
   message?: string | null;
-  status: 'new' | 'reviewing' | 'offered' | 'closed';
+  /**
+   * Use only after a manual check when a calendar is missing or unavailable.
+   */
+  confirmDespiteUnknown?: boolean | null;
+  status: 'new' | 'reviewing' | 'offered' | 'confirmed' | 'cancelled' | 'closed';
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "calendar-health".
+ */
+export interface CalendarHealth {
+  id: number;
+  key: string;
+  accommodation: number | Accommodation;
+  provider: 'airbnb' | 'booking';
+  consecutiveFailures: number;
+  lastSuccessAt?: string | null;
+  lastFailureAt?: string | null;
+  alertedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "slug-redirects".
+ */
+export interface SlugRedirect {
+  id: number;
+  fromPath: string;
+  targetCollection: 'pages' | 'accommodations';
+  targetId: number;
   updatedAt: string;
   createdAt: string;
 }
@@ -280,6 +509,10 @@ export interface PayloadLockedDocument {
         value: number | Media;
       } | null)
     | ({
+        relationTo: 'pages';
+        value: number | Page;
+      } | null)
+    | ({
         relationTo: 'accommodations';
         value: number | Accommodation;
       } | null)
@@ -290,6 +523,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'inquiries';
         value: number | Inquiry;
+      } | null)
+    | ({
+        relationTo: 'calendar-health';
+        value: number | CalendarHealth;
+      } | null)
+    | ({
+        relationTo: 'slug-redirects';
+        value: number | SlugRedirect;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -361,6 +602,7 @@ export interface UsersSelect<T extends boolean = true> {
  */
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
+  caption?: T;
   prefix?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -373,6 +615,145 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pages_select".
+ */
+export interface PagesSelect<T extends boolean = true> {
+  internalName?: T;
+  slug?: T;
+  title?: T;
+  seo?:
+    | T
+    | {
+        metaTitle?: T;
+        metaDescription?: T;
+        image?: T;
+      };
+  layout?:
+    | T
+    | {
+        hero?:
+          | T
+          | {
+              eyebrow?: T;
+              headline?: T;
+              intro?: T;
+              image?: T;
+              actions?:
+                | T
+                | {
+                    link?:
+                      | T
+                      | {
+                          label?: T;
+                          kind?: T;
+                          reference?: T;
+                          url?: T;
+                          email?: T;
+                          phone?: T;
+                          anchor?: T;
+                          newTab?: T;
+                        };
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        richText?:
+          | T
+          | {
+              headline?: T;
+              content?: T;
+              id?: T;
+              blockName?: T;
+            };
+        cta?:
+          | T
+          | {
+              eyebrow?: T;
+              headline?: T;
+              intro?: T;
+              action?:
+                | T
+                | {
+                    label?: T;
+                    kind?: T;
+                    reference?: T;
+                    url?: T;
+                    email?: T;
+                    phone?: T;
+                    anchor?: T;
+                    newTab?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        content?:
+          | T
+          | {
+              eyebrow?: T;
+              headline?: T;
+              intro?: T;
+              body?: T;
+              image?: T;
+              imageSide?: T;
+              action?:
+                | T
+                | {
+                    label?: T;
+                    kind?: T;
+                    reference?: T;
+                    url?: T;
+                    email?: T;
+                    phone?: T;
+                    anchor?: T;
+                    newTab?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        faq?:
+          | T
+          | {
+              eyebrow?: T;
+              headline?: T;
+              intro?: T;
+              items?:
+                | T
+                | {
+                    question?: T;
+                    answer?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        accommodationOverview?:
+          | T
+          | {
+              eyebrow?: T;
+              headline?: T;
+              intro?: T;
+              id?: T;
+              blockName?: T;
+            };
+        inquiry?:
+          | T
+          | {
+              eyebrow?: T;
+              headline?: T;
+              intro?: T;
+              mode?: T;
+              accommodation?: T;
+              id?: T;
+              blockName?: T;
+            };
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -392,7 +773,6 @@ export interface AccommodationsSelect<T extends boolean = true> {
     | T
     | {
         image?: T;
-        caption?: T;
         id?: T;
       };
   floorplan?: T;
@@ -406,6 +786,7 @@ export interface AccommodationsSelect<T extends boolean = true> {
   published?: T;
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -416,6 +797,9 @@ export interface ManualBlocksSelect<T extends boolean = true> {
   startDate?: T;
   endDate?: T;
   reason?: T;
+  inquiry?: T;
+  usage?: T;
+  active?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -433,7 +817,34 @@ export interface InquiriesSelect<T extends boolean = true> {
   phone?: T;
   guests?: T;
   message?: T;
+  confirmDespiteUnknown?: T;
   status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "calendar-health_select".
+ */
+export interface CalendarHealthSelect<T extends boolean = true> {
+  key?: T;
+  accommodation?: T;
+  provider?: T;
+  consecutiveFailures?: T;
+  lastSuccessAt?: T;
+  lastFailureAt?: T;
+  alertedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "slug-redirects_select".
+ */
+export interface SlugRedirectsSelect<T extends boolean = true> {
+  fromPath?: T;
+  targetCollection?: T;
+  targetId?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -484,8 +895,29 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
 export interface SiteSetting {
   id: number;
   siteName?: string | null;
-  heroTitle?: string | null;
-  heroText?: string | null;
+  navigation?:
+    | {
+        link: {
+          label: string;
+          kind: 'internal' | 'url' | 'email' | 'phone' | 'anchor';
+          reference?:
+            | ({
+                relationTo: 'pages';
+                value: number | Page;
+              } | null)
+            | ({
+                relationTo: 'accommodations';
+                value: number | Accommodation;
+              } | null);
+          url?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          anchor?: string | null;
+          newTab?: boolean | null;
+        };
+        id?: string | null;
+      }[]
+    | null;
   operatorName?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
@@ -502,8 +934,23 @@ export interface SiteSetting {
  */
 export interface SiteSettingsSelect<T extends boolean = true> {
   siteName?: T;
-  heroTitle?: T;
-  heroText?: T;
+  navigation?:
+    | T
+    | {
+        link?:
+          | T
+          | {
+              label?: T;
+              kind?: T;
+              reference?: T;
+              url?: T;
+              email?: T;
+              phone?: T;
+              anchor?: T;
+              newTab?: T;
+            };
+        id?: T;
+      };
   operatorName?: T;
   contactEmail?: T;
   contactPhone?: T;

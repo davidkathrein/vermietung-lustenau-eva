@@ -1,0 +1,25 @@
+name: Check calendar feeds
+
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: calendar-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check imported calendar feeds
+        env:
+          CALENDAR_CHECK_URL: ${{ secrets.CALENDAR_CHECK_URL }}
+          CALENDAR_CHECK_TOKEN: ${{ secrets.CALENDAR_CHECK_TOKEN }}
+        run: |
+          test -n "$CALENDAR_CHECK_URL"
+          test -n "$CALENDAR_CHECK_TOKEN"
+          curl --fail --silent --show-error --max-time 90 \
+            --header "Authorization: Bearer $CALENDAR_CHECK_TOKEN" \
+            "$CALENDAR_CHECK_URL"

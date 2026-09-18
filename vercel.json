@@ -1,0 +1,3 @@
+{
+  "buildCommand": "pnpm payload migrate && pnpm seed:content && pnpm build"
+}

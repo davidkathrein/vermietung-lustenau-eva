@@ -5,23 +5,17 @@ import { describe, expect, it } from 'vitest'
 import { GET as getPublicAvailability } from '../../src/app/api/public-availability/route'
 
 describe('public access', () => {
+  async function publishUnit(payload: Awaited<ReturnType<typeof getPayload>>, slug: string, ical?: { airbnb: string; booking: string }) {
+    const unit = await payload.create({ collection: 'accommodations', locale: 'de', draft: true, data: { slug, name: 'Prüfwohnung', teaser: 'Kurzbeschreibung', sleeps: 1, published: true, ical } })
+    await payload.update({ collection: 'accommodations', id: unit.id, locale: 'en', draft: true, data: { slug, name: 'Test apartment', teaser: 'Short description' } })
+    await payload.update({ collection: 'accommodations', id: unit.id, locale: 'de', data: { _status: 'published' } })
+    await payload.update({ collection: 'accommodations', id: unit.id, locale: 'en', data: { slug, name: 'Test apartment', teaser: 'Short description', _status: 'published' } })
+    return unit
+  }
   it('does not expose private iCal URLs', async () => {
     const payload = await getPayload({ config })
     const slug = `access-check-${Date.now()}`
-    const created = await payload.create({
-      collection: 'accommodations',
-      data: {
-        slug,
-        name: 'Access check',
-        teaser: 'Access check',
-        sleeps: 1,
-        published: true,
-        ical: {
-          airbnb: 'https://www.airbnb.com/calendar/ical/private.ics',
-          booking: 'https://ical.booking.com/private.ics',
-        },
-      },
-    })
+    const created = await publishUnit(payload, slug, { airbnb: 'https://www.airbnb.com/calendar/ical/private.ics', booking: 'https://ical.booking.com/private.ics' })
 
     try {
       const publicRecord = await payload.findByID({
@@ -38,10 +32,7 @@ describe('public access', () => {
   it('includes an admin block in public availability without exposing its reason', async () => {
     const payload = await getPayload({ config })
     const slug = `block-check-${Date.now()}`
-    const unit = await payload.create({
-      collection: 'accommodations',
-      data: { slug, name: 'Block check', teaser: 'Block check', sleeps: 1, published: true },
-    })
+    const unit = await publishUnit(payload, slug)
     const block = await payload.create({
       collection: 'manual-blocks',
       data: {

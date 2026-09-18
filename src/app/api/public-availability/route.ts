@@ -39,8 +39,9 @@ export async function GET(request: Request): Promise<Response> {
   const payload = await getPayload({ config })
   const { docs } = await payload.find({
     collection: 'accommodations',
-    where: { published: { equals: true } },
+    where: { published: { equals: true }, _status: { equals: 'published' } },
     locale,
+    fallbackLocale: false,
     depth: 0,
     limit: 20,
     sort: 'sortOrder',
@@ -55,6 +56,7 @@ export async function GET(request: Request): Promise<Response> {
         and: [
           { startDate: { less_than_equal: `${through}T23:59:59.999Z` } },
           { endDate: { greater_than: `${from}T00:00:00.000Z` } },
+          { active: { equals: true } },
         ],
       },
       depth: 0,
@@ -65,6 +67,12 @@ export async function GET(request: Request): Promise<Response> {
       const unitId = typeof block.accommodation === 'number' ? block.accommodation : block.accommodation.id
       const dates = manualDates.get(unitId) ?? new Set<string>()
       expandManualBlock(block.startDate, block.endDate, from, through).forEach((date) => dates.add(date))
+      if (block.usage === 'seminar') {
+        const previous = new Date(`${block.startDate.slice(0, 10)}T12:00:00Z`)
+        previous.setUTCDate(previous.getUTCDate() - 1)
+        const day = previous.toISOString().slice(0, 10)
+        if (day >= from && day <= through) dates.add(day)
+      }
       manualDates.set(unitId, dates)
     }
     hasNextPage = result.hasNextPage
