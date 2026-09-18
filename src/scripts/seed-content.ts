@@ -22,10 +22,38 @@ async function seedImage(filename: string, germanAlt: string, englishAlt: string
 const photos = {
   hero: await seedImage('hero-concept.jpg', 'Heller Wohnbereich mit Holztisch und Sofa', 'Bright living area with a wooden table and sofa'),
   apartments: [
-    await seedImage('apartment-1-concept.jpg', 'Heller Raum mit langem Tisch für Seminare', 'Bright room with a long table for seminars'),
-    await seedImage('apartment-2-concept.jpg', 'Ruhiges Schlafzimmer mit Doppelbett', 'Calm bedroom with a double bed'),
-    await seedImage('apartment-3-concept.jpg', 'Gemütlicher Wohnbereich mit grünem Sofa', 'Comfortable living area with a green sofa'),
+    [
+      await seedImage('apartment-1-concept.jpg', 'Heller Raum mit langem Tisch für Seminare', 'Bright room with a long table for seminars'),
+      await seedImage('apartment-1-seminar-opposite.jpg', 'Seminarraum mit Blick über den langen Holztisch', 'Seminar room viewed across the long wooden table'),
+      await seedImage('apartment-1-seminar-side.jpg', 'Seminarraum mit Sitzbereich im Hintergrund', 'Seminar room with a sitting area beyond'),
+    ],
+    [
+      await seedImage('apartment-2-concept.jpg', 'Ruhiges Schlafzimmer mit Doppelbett', 'Calm bedroom with a double bed'),
+      await seedImage('apartment-2-bedroom-opposite.jpg', 'Doppelbett im hellen Schlafzimmer', 'Double bed in the bright bedroom'),
+      await seedImage('apartment-2-living-dining.jpg', 'Wohn- und Essbereich mit rundem Holztisch', 'Living and dining area with a round wooden table'),
+    ],
+    [
+      await seedImage('apartment-3-concept.jpg', 'Gemütlicher Wohnbereich mit grünem Sofa', 'Comfortable living area with a green sofa'),
+      await seedImage('apartment-3-living-opposite.jpg', 'Wohnbereich mit grünem Sofa und Bücherregal', 'Living area with a green sofa and bookshelves'),
+      await seedImage('apartment-3-kitchen-dining.jpg', 'Kleine Küche mit Essplatz am Fenster', 'Small kitchen with a dining nook by the window'),
+    ],
   ],
+}
+
+async function addMissingGalleryImages(id: number, imageIDs: number[]) {
+  const accommodation = await payload.findByID({ collection: 'accommodations', id, locale: 'de', depth: 0 })
+  const gallery = accommodation.gallery ?? []
+  const existingIDs = new Set(gallery.map(({ image }) => typeof image === 'number' ? image : image?.id))
+  const missing = imageIDs.filter((image) => !existingIDs.has(image))
+  if (missing.length) {
+    await payload.update({
+      collection: 'accommodations',
+      id,
+      locale: 'de',
+      draft: accommodation._status === 'draft',
+      data: { gallery: [...gallery, ...missing.map((image) => ({ image }))] },
+    })
+  }
 }
 
 async function addMissingPageImages(id: number, imagesByIndex: Record<number, number>) {
@@ -113,10 +141,10 @@ for (const [index, unit] of units.entries()) {
       await payload.update({ collection: 'accommodations', id: legacy.id, locale: 'en', draft: true, data: { slug: unit.enSlug, name: unit.en.name, teaser: unit.en.teaser, description: unit.en.description, bedSetup: unit.en.beds } })
       await payload.update({ collection: 'accommodations', id: legacy.id, locale: 'de', data: { _status: 'published' } })
     }
-    if (!legacy.gallery?.length) await payload.update({ collection: 'accommodations', id: legacy.id, locale: 'de', data: { gallery: [{ image: photos.apartments[index] }], _status: 'published' } })
+    await addMissingGalleryImages(legacy.id, photos.apartments[index])
     continue
   }
-  const created = await payload.create({ collection: 'accommodations', locale: 'de', draft: true, data: { slug: unit.deSlug, name: unit.de.name, teaser: unit.de.teaser, description: unit.de.description, sleeps: unit.sleeps, bedSetup: unit.de.beds, seminarCapable: unit.seminar, seminarCapacity: unit.seminar ? unit.seminarCapacity : undefined, sortOrder: index + 1, published: true, gallery: [{ image: photos.apartments[index] }] } })
+  const created = await payload.create({ collection: 'accommodations', locale: 'de', draft: true, data: { slug: unit.deSlug, name: unit.de.name, teaser: unit.de.teaser, description: unit.de.description, sleeps: unit.sleeps, bedSetup: unit.de.beds, seminarCapable: unit.seminar, seminarCapacity: unit.seminar ? unit.seminarCapacity : undefined, sortOrder: index + 1, published: true, gallery: photos.apartments[index].map((image) => ({ image })) } })
   await payload.update({ collection: 'accommodations', id: created.id, locale: 'en', draft: true, data: { slug: unit.enSlug, name: unit.en.name, teaser: unit.en.teaser, description: unit.en.description, bedSetup: unit.en.beds } })
   await payload.update({ collection: 'accommodations', id: created.id, locale: 'de', data: { _status: 'published' } })
 }
@@ -180,7 +208,7 @@ const homepage = await page('homepage', {
 
 await addMissingPageImages(apartments.id, { 0: photos.hero })
 await addMissingPageImages(contact.id, { 0: photos.hero })
-await addMissingPageImages(homepage.id, { 0: photos.hero, 1: photos.apartments[2] })
+await addMissingPageImages(homepage.id, { 0: photos.hero, 1: photos.apartments[2][0] })
 
 const latest = await payload.findGlobal({ slug: 'site-settings', locale: 'de', depth: 0 })
 if (!latest.navigation?.length) {
