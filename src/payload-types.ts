@@ -103,9 +103,11 @@ export interface Config {
   fallbackLocale: ('false' | 'none' | 'null') | false | null | ('de' | 'en') | ('de' | 'en')[];
   globals: {
     'site-settings': SiteSetting;
+    'instagram-sync-status': InstagramSyncStatus;
   };
   globalsSelect: {
     'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
+    'instagram-sync-status': InstagramSyncStatusSelect<false> | InstagramSyncStatusSelect<true>;
   };
   locale: 'de' | 'en';
   widgets: {
@@ -1002,6 +1004,21 @@ export interface SiteSetting {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "instagram-sync-status".
+ */
+export interface InstagramSyncStatus {
+  id: number;
+  snapshotId?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  profileUrl?: string | null;
+  lastError?: string | null;
+  lastImportedCount?: number | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "site-settings_select".
  */
 export interface SiteSettingsSelect<T extends boolean = true> {
@@ -1057,6 +1074,21 @@ export interface SiteSettingsSelect<T extends boolean = true> {
   postalCode?: T;
   city?: T;
   country?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "instagram-sync-status_select".
+ */
+export interface InstagramSyncStatusSelect<T extends boolean = true> {
+  snapshotId?: T;
+  startedAt?: T;
+  completedAt?: T;
+  profileUrl?: T;
+  lastError?: T;
+  lastImportedCount?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

@@ -35,6 +35,6 @@ export default defineConfig({
   webServer: {
     command: 'pnpm dev',
     reuseExistingServer: true,
-    url: process.env.E2E_BASE_URL || 'http://localhost:3000',
+    url: `${process.env.E2E_BASE_URL || 'http://localhost:3000'}/admin`,
   },
 })

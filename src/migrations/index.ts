@@ -3,6 +3,7 @@ import * as migration_20260918_150828_localized_content from './20260918_150828_
 import * as migration_20260918_175110_final_frontend from './20260918_175110_final_frontend';
 import * as migration_20260918_183255_instagram_posts from './20260918_183255_instagram_posts';
 import * as migration_20260918_190042_footer_settings from './20260918_190042_footer_settings';
+import * as migration_20260918_190319_instagram_sync_status from './20260918_190319_instagram_sync_status';
 
 export const migrations = [
   {
@@ -28,6 +29,11 @@ export const migrations = [
   {
     up: migration_20260918_190042_footer_settings.up,
     down: migration_20260918_190042_footer_settings.down,
-    name: '20260918_190042_footer_settings'
+    name: '20260918_190042_footer_settings',
+  },
+  {
+    up: migration_20260918_190319_instagram_sync_status.up,
+    down: migration_20260918_190319_instagram_sync_status.down,
+    name: '20260918_190319_instagram_sync_status'
   },
 ];

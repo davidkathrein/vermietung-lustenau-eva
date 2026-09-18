@@ -5,7 +5,7 @@ import { adminOnly } from '../access/adminOnly'
 export const InstagramPosts: CollectionConfig = {
   slug: 'instagram-posts',
   labels: { singular: { de: 'Instagram-Beitrag', en: 'Instagram post' }, plural: { de: 'Instagram-Beiträge', en: 'Instagram posts' } },
-  admin: { useAsTitle: 'externalId', defaultColumns: ['externalId', 'publishedAt', 'visible'] },
+  admin: { useAsTitle: 'externalId', defaultColumns: ['externalId', 'publishedAt', 'visible'], components: { beforeList: ['/components/instagram/InstagramSyncControl'] } },
   access: { read: adminOnly, create: adminOnly, update: adminOnly, delete: adminOnly },
   fields: [
     { name: 'translationPanel', type: 'ui', admin: { components: { Field: '/components/translation/TranslationPanel' } } },

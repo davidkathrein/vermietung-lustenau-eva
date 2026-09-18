@@ -34,6 +34,11 @@ test.describe('Admin Panel', () => {
     await expect(listViewArtifact).toBeVisible()
   })
 
+  test('shows the manual Instagram sync control', async () => {
+    await page.goto(`${baseURL}/admin/collections/instagram-posts`)
+    await expect(page.getByRole('button', { name: /Instagram jetzt abrufen|Collect Instagram now|Abruf jetzt prüfen|Check collection now/ })).toBeVisible()
+  })
+
   test('can navigate to edit view', async () => {
     await page.goto(`${baseURL}/admin/collections/users/create`)
     await expect(page).toHaveURL(/\/admin\/collections\/users\/[a-zA-Z0-9-_]+/)

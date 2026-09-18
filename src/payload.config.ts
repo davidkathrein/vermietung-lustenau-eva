@@ -20,6 +20,7 @@ import { CalendarHealth } from './collections/CalendarHealth'
 import { SlugRedirects } from './collections/SlugRedirects'
 import { InstagramPosts } from './collections/InstagramPosts'
 import { SiteSettings } from './globals/SiteSettings'
+import { InstagramSyncStatus } from './globals/InstagramSyncStatus'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -34,7 +35,7 @@ export default buildConfig({
     },
   },
   collections: [Users, Media, Pages, Accommodations, InstagramPosts, ManualBlocks, Inquiries, CalendarHealth, SlugRedirects],
-  globals: [SiteSettings],
+  globals: [SiteSettings, InstagramSyncStatus],
   i18n: {
     fallbackLanguage: 'de',
     supportedLanguages: { de, en },

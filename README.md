@@ -21,7 +21,7 @@ pnpm dev
 - Seiten und Wohnungen haben Entwürfe, Autosave und sprachspezifische Slugs. Das Seitenformular bietet eine eingebettete Live-Vorschau. Eine Veröffentlichung erfordert beide vollständig ausgefüllten Sprachen einschließlich aller Pflicht-Metadaten. Alte öffentliche Slugs erhalten automatische permanente Weiterleitungen.
 - Der Sprachwechsel im Bearbeitungsformular ist unabhängig von der Sprache der Admin-Oberfläche. Die KI-Übersetzung wird erst bei vollständiger Quellsprache angeboten. Sie liefert Vorschläge für Texte, Rich-Text-Formatierung und Slugs; jedes Feld kann einzeln oder über „Alles übernehmen“ ins Formular übernommen werden. Speichern und Veröffentlichen bleiben getrennte, manuelle Schritte. `OPENROUTER_API_KEY` ist nur serverseitig nötig.
 - Medien haben sprachspezifischen Alternativtext und eine optionale sprachspezifische Caption. Eine gepflegte Caption erscheint immer als Overlay im Bild. Galerien haben keine zweite Caption-Quelle.
-- Instagram-Beiträge haben ein eigenes Datenmodell für externe ID, Permalink, Text, Bild und Veröffentlichungsdatum. Ein Scraper oder öffentlicher Feed ist noch nicht angebunden.
+- Instagram-Beiträge haben ein eigenes Datenmodell für externe ID, Permalink, Text, Bild und Veröffentlichungsdatum. Die Listenansicht bietet einen manuellen Bright-Data-Abgleich. Neue Beiträge bleiben zunächst unsichtbar; bestehende redaktionelle Texte, Übersetzungen und Sichtbarkeit werden beim erneuten Abruf nicht überschrieben.
 - Interne Links speichern direkte Beziehungen zu Seiten oder Wohnungen; zusätzlich sind Web-, Mail-, Telefon- und Ankerlinks möglich. Die Hauptnavigation wird in Website-Einstellungen gepflegt, der Footer listet alle veröffentlichten Wohnungen automatisch.
 
 ## Anfragen und Kalender
@@ -33,6 +33,10 @@ Der öffentliche Verfügbarkeitsstatus kombiniert manuelle Sperren mit Airbnb- u
 Aktive Sperren werden über einen signierten iCal-Link exportiert, damit Airbnb und Booking.com sie importieren können. Den Link zeigt das jeweilige Wohnungsformular nach Konfiguration von `ICAL_EXPORT_SECRET` an. Er enthält keine Gästedaten und kann durch Wechsel des Secrets ungültig gemacht werden. iCal-Synchronisierung ist verzögert und ersetzt keine manuelle Kontrolle vor einer Zusage.
 
 Ein GitHub-Actions-Workflow prüft verbundene Feeds ungefähr alle 30 Minuten über `/api/internal/calendar-check`. Dafür braucht die Website `ICAL_MONITOR_TOKEN` und GitHub die Secrets `CALENDAR_CHECK_TOKEN` (gleicher Wert) und `CALENDAR_CHECK_URL` (vollständige API-URL). Nach drei aufeinanderfolgenden Fehlern geht einmalig eine Warnung an `SUPPORT_EMAIL` und die Kontakt-E-Mail aus Website-Einstellungen; bei Erholung eine Entwarnung. `RESEND_API_KEY` und `EMAIL_FROM` aktivieren den Versand. Solange Resend nicht eingerichtet ist, werden keine E-Mails gesendet. Geplante GitHub-Actions-Läufe sind best effort, nicht sekundengenau.
+
+## Instagram-Abgleich
+
+Auf dem Server `BRIGHTDATA_API_KEY`, `INSTAGRAM_PROFILE_URL` (eine öffentliche Profil-URL) und `INSTAGRAM_SYNC_TOKEN` (mindestens 32 Zeichen) setzen. In GitHub Actions `INSTAGRAM_SYNC_TOKEN` mit demselben Wert sowie `INSTAGRAM_SYNC_URL` als vollständige URL zu `/api/internal/instagram-sync` hinterlegen. Der Workflow prüft stündlich, startet aber höchstens alle sechs Stunden einen neuen kostenpflichtigen Bright-Data-Abruf. Der Button in der Instagram-Beitragsliste startet sofort einen Abruf oder prüft den laufenden Snapshot; auch `workflow_dispatch` ist möglich. Bright Data liefert Ergebnisse asynchron. Das Profil wird mit höchstens zwölf aktuellen Beiträgen abgefragt; neue Beiträge werden anhand der Instagram-ID eingefügt und Bilder nach Möglichkeit dauerhaft in Medien gespeichert. Ausgefallene Bilddownloads blockieren den Textimport nicht. Es gibt noch keinen öffentlichen Instagram-Block oder Feed.
 
 ## Vor öffentlicher Freigabe
 
