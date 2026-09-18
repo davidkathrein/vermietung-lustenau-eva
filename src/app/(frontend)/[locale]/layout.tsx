@@ -3,9 +3,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { Separator } from '@/components/ui/separator'
+import { buttonVariants } from '@/components/ui/button'
 import { hrefForLink } from '@/lib/href'
-import { accommodationPath, isSiteLocale } from '@/lib/locale'
-import { getPublicAccommodations, getPublicSettings } from '@/lib/public-content'
+import { accommodationPath, isSiteLocale, pagePath } from '@/lib/locale'
+import { getPublicAccommodations, getPublicContactPage, getPublicSettings } from '@/lib/public-content'
 
 import '../styles.css'
 
@@ -15,7 +16,7 @@ const body = Figtree({ subsets: ['latin'], variable: '--font-figtree', display: 
 export default async function LocaleLayout({ children, params }: { children: React.ReactNode; params: Promise<{ locale: string }> }) {
   const { locale } = await params
   if (!isSiteLocale(locale)) notFound()
-  const [settings, accommodations] = await Promise.all([getPublicSettings(locale), getPublicAccommodations(locale)])
+  const [settings, accommodations, contactPage] = await Promise.all([getPublicSettings(locale), getPublicAccommodations(locale), getPublicContactPage(locale)])
   const siteName = settings.siteName || 'Wohnen in Lustenau'
   const footer = settings.footer
   const footerLinks = footer?.links?.flatMap((row) => {
@@ -38,7 +39,12 @@ export default async function LocaleLayout({ children, params }: { children: Rea
                   return <Link key={row.id} href={href} className="site-nav__link" target={row.link.newTab ? '_blank' : undefined} rel={row.link.newTab ? 'noopener noreferrer' : undefined}>{row.link.label}</Link>
                 })}
               </nav>
-              <Link href={locale === 'de' ? '/en' : '/de'} className="site-language" hrefLang={locale === 'de' ? 'en' : 'de'} aria-label={locale === 'de' ? 'Switch to English' : 'Zu Deutsch wechseln'}>{locale === 'de' ? 'EN' : 'DE'}</Link>
+              <nav className="site-language" aria-label={locale === 'de' ? 'Sprache wählen' : 'Choose language'}>
+                {locale === 'de' ? <span className="site-language__current" aria-current="page">DE</span> : <Link href="/de" hrefLang="de" aria-label="Zu Deutsch wechseln">DE</Link>}
+                <span aria-hidden="true">/</span>
+                {locale === 'en' ? <span className="site-language__current" aria-current="page">EN</span> : <Link href="/en" hrefLang="en" aria-label="Switch to English">EN</Link>}
+              </nav>
+              {contactPage && <Link href={`${pagePath(locale, contactPage.internalName, contactPage.slug)}#anfrage`} className={buttonVariants({ size: 'sm', className: 'site-booking-cta' })} aria-label={locale === 'de' ? 'Buchung anfragen' : 'Request booking'}><span className="site-booking-cta__full">{locale === 'de' ? 'Buchung anfragen' : 'Request booking'}</span><span className="site-booking-cta__short" aria-hidden="true">{locale === 'de' ? 'Anfragen' : 'Inquire'}</span></Link>}
             </div>
           </header>
           <div className="flex-1">{children}</div>

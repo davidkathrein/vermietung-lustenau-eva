@@ -24,6 +24,15 @@ export async function getPublicHomepage(locale: SiteLocale): Promise<Page | null
   return result.docs[0] ?? null
 }
 
+export async function getPublicContactPage(locale: SiteLocale): Promise<Page | null> {
+  const payload = await getPayload({ config })
+  const result = await payload.find({
+    collection: 'pages', locale, fallbackLocale: false, depth: 0, limit: 1,
+    where: { internalName: { equals: 'contact' }, _status: { equals: 'published' } },
+  })
+  return result.docs[0] ?? null
+}
+
 export async function getPublicAccommodationBySlug(locale: SiteLocale, slug: string): Promise<Accommodation | null> {
   const payload = await getPayload({ config })
   const result = await payload.find({

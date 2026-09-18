@@ -26,6 +26,7 @@ function SectionIntro({ block }: { block: { eyebrow?: string | null; headline: s
 }
 
 export function PageBlocks({ page, locale, accommodations }: { page: Page; locale: SiteLocale; accommodations: Accommodation[] }) {
+  const firstInquiryIndex = page.layout?.findIndex((block) => block.blockType === 'inquiry')
   return <main>{page.layout?.map((block: Block, index) => {
     const key = block.id ?? `${block.blockType}-${index}`
 
@@ -94,7 +95,7 @@ export function PageBlocks({ page, locale, accommodations }: { page: Page; local
       </div>
     </section>
 
-    if (block.blockType === 'inquiry') return <section key={key} className="site-inquiry site-section">
+    if (block.blockType === 'inquiry') return <section key={key} id={index === firstInquiryIndex ? 'anfrage' : undefined} className="site-inquiry site-section">
       <div className="site-container">
         <SectionIntro block={block} />
         <InquiryForm locale={locale} accommodations={accommodations} mode={block.mode} preselectedAccommodation={typeof block.accommodation === 'object' ? block.accommodation?.slug : undefined} />
