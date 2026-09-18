@@ -1,6 +1,6 @@
 # Hausvermietung Lustenau
 
-Eigenständiges Payload-Projekt für drei Kurzzeitwohnungen in Lustenau. Das öffentliche Frontend ist bewusst nur ein Platzhalter; es wird separat gestaltet und umgesetzt.
+Eigenständiges Payload-Projekt für drei Kurzzeitwohnungen in Lustenau. Das öffentliche Frontend umfasst eine deutsch- und englischsprachige Vorschau der Startseite, Wohnungsseiten, Seminarseite, Kontakt und Anfrageformulare.
 
 ## Lokal starten
 
@@ -28,7 +28,7 @@ Neue Wohnungen sind standardmäßig unveröffentlicht. Die Beispieldaten sind lo
 
 ## Schnittstellen für das Frontend
 
-Das Frontend kann im selben Next.js-Projekt unter `src/app/(frontend)/` entstehen. Öffentliche Inhalte liefert Payload bereits unter `GET /api/accommodations?locale=de&sort=sortOrder` und `GET /api/globals/site-settings?locale=en`. Nicht veröffentlichte Wohnungen und private iCal-Links sind in der öffentlichen REST-Antwort nicht enthalten.
+Das Frontend liegt im selben Next.js-Projekt unter `src/app/(frontend)/`. Die deutschen Seiten beginnen unter `/`, die englischen unter `/en`. Es liest nur veröffentlichte Wohnungen aus Payload und gibt private iCal-Links nicht an Client-Komponenten weiter. Die visuelle Grundlage und der shadcn-Preset stehen in [docs/design/frontend.md](docs/design/frontend.md).
 
 `GET /api/public-availability?locale=de&from=2026-10-01&through=2026-10-31` liefert je Wohnung einen Status und belegte Datumswerte:
 
@@ -79,4 +79,4 @@ Lokal bleibt SQLite als Datei aktiv. `vercel env pull .env.local --environment=d
 
 Vercel Blob ist für die Medien-Collection vorbereitet. Der öffentliche Blob Store `hausvermietung-lustenau-media` in Frankfurt ist mit Preview und Production verbunden; sein `BLOB_READ_WRITE_TOKEN` ist dort als geheime Umgebungsvariable hinterlegt. Ohne den Token verwendet die lokale Entwicklung weiterhin das Dateisystem. Das Plugin verwendet direkte Browser-Uploads, damit größere Bilder nicht am Upload-Limit einer Vercel Function scheitern.
 
-Außerdem fehlen echte Fotos, Grundrisse, Preise, Kontakt-E-Mail, Datenschutztext, E-Mail-Benachrichtigung für neue Anfragen und ein dauerhafter Schutz gegen Formularspam. Für den Livebetrieb sind eine dauerhafte Datenbank und Medienspeicherung festzulegen. Diese Punkte sind keine Voraussetzungen für die lokale Frontendentwicklung, aber für eine Veröffentlichung.
+Für die Veröffentlichung fehlen echte Fotos, Grundrisse, Preise, Kontakt-E-Mail, Impressum, Datenschutztext, E-Mail-Benachrichtigung für neue Anfragen und ein dauerhafter Schutz gegen Formularspam. Allgemeine Kontaktanfragen, Zahlungs- und Stornoregeln sowie das Zeitfenster zwischen Seminar und Übernachtung sind noch nicht entschieden. Die lokale Vorschau verwendet ausdrücklich gekennzeichnete Bildflächen statt fiktiver Immobilienfotos. Für den Livebetrieb sind eine dauerhafte Datenbank und Medienspeicherung festzulegen.
