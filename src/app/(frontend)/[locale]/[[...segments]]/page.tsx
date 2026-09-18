@@ -7,7 +7,7 @@ import { getPayload } from 'payload'
 
 import { InquiryForm } from '@/components/site/InquiryForm'
 import { LivePage } from '@/components/site/LivePage'
-import { MediaFigure } from '@/components/site/MediaFigure'
+import { AccommodationGallery } from '@/components/site/AccommodationGallery'
 import { PageBlocks } from '@/components/site/PageBlocks'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
@@ -85,6 +85,11 @@ export default async function ContentPage({ params }: Props) {
   }
 
   const unit = content.accommodation
+  const gallery = unit.gallery?.flatMap((row, index) => {
+    const image = row.image
+    if (!image || typeof image !== 'object' || !image.url) return []
+    return [{ id: String(row.id ?? `${image.id}-${index}`), src: image.url, alt: image.alt || unit.name, caption: image.caption }]
+  }) ?? []
   return <main>
     <div className="site-room site-container">
       <Link href={`/${locale}/${apartmentBase(locale)}`} className="site-back"><span aria-hidden="true">←</span>{locale === 'de' ? 'Alle Wohnungen' : 'All apartments'}</Link>
@@ -92,9 +97,7 @@ export default async function ContentPage({ params }: Props) {
         <div><p className="site-eyebrow">{locale === 'de' ? 'Wohnen in Lustenau' : 'Stay in Lustenau'}</p><h1>{unit.name}</h1></div>
         <div className="site-room__lead"><p>{unit.teaser}</p><div className="site-room__badges"><Badge variant="outline">{locale === 'de' ? `Bis zu ${unit.sleeps} Personen` : `Up to ${unit.sleeps} guests`}</Badge>{unit.seminarCapable && <Badge variant="outline">{locale === 'de' ? 'Auch als Seminarraum' : 'Also for seminars'}</Badge>}</div></div>
       </div>
-      <div className={`site-room__gallery ${unit.gallery && unit.gallery.length > 1 ? 'site-room__gallery--multiple' : ''}`}>
-        {unit.gallery?.length ? unit.gallery.map((row, index) => <MediaFigure key={row.id ?? index} media={row.image} className="site-room__photo" eager={index === 0} />) : <div className="site-room__placeholder">{unit.name}</div>}
-      </div>
+      {gallery.length ? <AccommodationGallery images={gallery} locale={locale} name={unit.name} /> : <div className="site-room__placeholder">{unit.name}</div>}
       <div className="site-room__details">
         <div><p className="site-eyebrow">{locale === 'de' ? 'Der Raum' : 'The space'}</p>{unit.description && <p className="site-room__description">{unit.description}</p>}</div>
         <div className="site-room__summary"><p className="site-room__summary-label">{locale === 'de' ? 'Auf einen Blick' : 'At a glance'}</p><dl><div><dt>{locale === 'de' ? 'Gäste' : 'Guests'}</dt><dd>{locale === 'de' ? `Bis zu ${unit.sleeps} Personen` : `Up to ${unit.sleeps} guests`}</dd></div>{unit.bedSetup && <div><dt>{locale === 'de' ? 'Schlafplätze' : 'Sleeping arrangements'}</dt><dd>{unit.bedSetup}</dd></div>}</dl><a href="#anfrage" className={`${buttonVariants({ size: 'lg' })} site-action`}>{locale === 'de' ? 'Anfrage senden' : 'Send inquiry'}<span aria-hidden="true">↗</span></a></div>

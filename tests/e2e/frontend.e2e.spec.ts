@@ -21,3 +21,13 @@ test('shows the shared seminar usage and does not claim availability without fee
   await expect(page.getByRole('tab', { name: 'Seminar' })).toBeVisible()
   await expect(page.getByText('Bitte einen Termin wählen.')).toBeVisible()
 })
+
+test('opens an apartment image in a lightbox and closes it with Escape', async ({ page }) => {
+  await page.goto('/de/wohnungen/wohnung-1')
+  await page.getByRole('button', { name: 'Bild 1 in voller Größe öffnen' }).click()
+  const lightbox = page.getByRole('dialog', { name: 'Bilder von Wohnung 1 / Seminarraum' })
+  await expect(lightbox).toBeVisible()
+  await expect(lightbox.getByRole('img', { name: 'Heller Raum mit langem Tisch für Seminare' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(lightbox).not.toBeVisible()
+})
