@@ -10,6 +10,7 @@ export const InstagramPosts: CollectionConfig = {
   fields: [
     { name: 'translationPanel', type: 'ui', admin: { components: { Field: '/components/translation/TranslationPanel' } } },
     { name: 'externalId', type: 'text', label: { de: 'Instagram-ID', en: 'Instagram ID' }, required: true, unique: true, index: true },
+    { name: 'sourceProfile', type: 'text', label: { de: 'Quellprofil', en: 'Source profile' }, admin: { readOnly: true }, index: true },
     { name: 'permalink', type: 'text', label: { de: 'Beitragslink', en: 'Post URL' }, required: true },
     { name: 'caption', type: 'textarea', label: { de: 'Beitragstext', en: 'Caption' }, localized: true },
     { name: 'image', type: 'upload', relationTo: 'media', label: { de: 'Bild', en: 'Image' } },

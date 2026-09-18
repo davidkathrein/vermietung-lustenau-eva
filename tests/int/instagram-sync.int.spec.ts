@@ -38,6 +38,16 @@ describe('Instagram sync', () => {
     ] }])).toEqual([{ externalId: '123', permalink: 'https://www.instagram.com/p/ABC/', caption: 'Hallo', publishedAt: '2026-09-18T10:00:00.000Z', imageUrl: 'https://scontent.cdninstagram.com/photo.jpg' }])
   })
 
+  it('reads Bright Data post IDs and photo or reel thumbnails', () => {
+    expect(parseInstagramPosts([
+      { post_id: 'photo-1', url: 'https://www.instagram.com/p/PHOTO/', description: 'Foto', date_posted: '2026-09-18T10:00:00Z', photos: ['https://scontent.cdninstagram.com/photo.jpg'] },
+      { post_id: 'reel-1', url: 'https://www.instagram.com/reel/REEL/', description: 'Video', thumbnail: 'https://scontent.cdninstagram.com/reel.jpg', videos: ['https://scontent.cdninstagram.com/reel.mp4'] },
+    ])).toEqual([
+      { externalId: 'photo-1', permalink: 'https://www.instagram.com/p/PHOTO/', caption: 'Foto', publishedAt: '2026-09-18T10:00:00.000Z', imageUrl: 'https://scontent.cdninstagram.com/photo.jpg' },
+      { externalId: 'reel-1', permalink: 'https://www.instagram.com/reel/REEL/', caption: 'Video', publishedAt: undefined, imageUrl: 'https://scontent.cdninstagram.com/reel.jpg' },
+    ])
+  })
+
   it('starts a snapshot, waits, then imports without overwriting existing editorial content', async () => {
     process.env.BRIGHTDATA_API_KEY = 'test-key'
     process.env.INSTAGRAM_PROFILE_URL = 'https://www.instagram.com/example/'
@@ -65,7 +75,7 @@ describe('Instagram sync', () => {
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual([{ url: 'https://www.instagram.com/example/', num_of_posts: 12 }])
     expect(await syncInstagram(payload)).toMatchObject({ state: 'running' })
     expect(await syncInstagram(payload)).toEqual({ state: 'imported', imported: 1 })
-    expect(posts.get('123')).toMatchObject({ caption: 'Original', visible: false })
+    expect(posts.get('123')).toMatchObject({ caption: 'Original', sourceProfile: 'https://www.instagram.com/example/', visible: true })
     expect(state.snapshotId).toBeNull()
     expect(await syncInstagram(payload)).toMatchObject({ state: 'waiting' })
     expect(await syncInstagram(payload, true)).toMatchObject({ state: 'started' })

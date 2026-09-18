@@ -412,6 +412,7 @@ export interface Accommodation {
 export interface InstagramPost {
   id: number;
   externalId: string;
+  sourceProfile?: string | null;
   permalink: string;
   caption?: string | null;
   image?: (number | null) | Media;
@@ -817,6 +818,7 @@ export interface AccommodationsSelect<T extends boolean = true> {
  */
 export interface InstagramPostsSelect<T extends boolean = true> {
   externalId?: T;
+  sourceProfile?: T;
   permalink?: T;
   caption?: T;
   image?: T;

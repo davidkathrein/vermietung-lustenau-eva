@@ -12,6 +12,7 @@ import type { Accommodation, Page } from '@/payload-types'
 
 import { ActionLink } from './ActionLink'
 import { InquiryForm } from './InquiryForm'
+import { InstagramFeed } from './InstagramFeed'
 import { MediaFigure } from './MediaFigure'
 
 type Block = Page['layout'][number]
@@ -101,5 +102,5 @@ export function PageBlocks({ page, locale, accommodations }: { page: Page; local
     </section>
 
     return null
-  })}</main>
+  })}{page.internalName === 'homepage' && <InstagramFeed locale={locale} />}</main>
 }
