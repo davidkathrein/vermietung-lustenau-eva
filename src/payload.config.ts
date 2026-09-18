@@ -1,6 +1,8 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { de } from '@payloadcms/translations/languages/de'
+import { en } from '@payloadcms/translations/languages/en'
 import { vercelBlobStorage } from '@payloadcms/storage-vercel-blob'
 import path from 'path'
 import { buildConfig } from 'payload'
@@ -28,6 +30,10 @@ export default buildConfig({
   },
   collections: [Users, Media, Accommodations, ManualBlocks, Inquiries],
   globals: [SiteSettings],
+  i18n: {
+    fallbackLanguage: 'de',
+    supportedLanguages: { de, en },
+  },
   localization: {
     locales: [
       { label: 'Deutsch', code: 'de' },

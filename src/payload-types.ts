@@ -196,7 +196,7 @@ export interface Accommodation {
     | null;
   floorplan?: (number | null) | Media;
   /**
-   * Diese privaten Links bleiben auf dem Server und erscheinen nicht im öffentlichen API.
+   * These private links stay on the server and are not exposed by the public API.
    */
   ical?: {
     airbnb?: string | null;
@@ -208,7 +208,7 @@ export interface Accommodation {
   createdAt: string;
 }
 /**
- * Sperrt die Tage im Website-Kalender. Airbnb und Booking.com müssen separat gesperrt werden.
+ * Blocks dates in the website calendar. Airbnb and Booking.com must be blocked separately.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "manual-blocks".
@@ -217,11 +217,11 @@ export interface ManualBlock {
   id: number;
   accommodation: number | Accommodation;
   /**
-   * Erster gesperrter Tag
+   * First blocked day
    */
   startDate: string;
   /**
-   * Erster wieder freier Tag (ausschließlich)
+   * First free day (exclusive)
    */
   endDate: string;
   reason: string;
