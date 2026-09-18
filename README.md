@@ -1,67 +1,76 @@
-# Payload Blank Template
+# Hausvermietung Lustenau
 
-This template comes configured with the bare minimum to get started on anything you need.
+Eigenständiges Payload-Projekt für drei Kurzzeitwohnungen in Lustenau. Das öffentliche Frontend ist bewusst nur ein Platzhalter; es wird separat gestaltet und umgesetzt.
 
-## Quick start
+## Lokal starten
 
-This template can be deployed directly from our Cloud hosting and it will setup MongoDB and cloud S3 object storage for media.
+```bash
+pnpm install
+cp .env.example .env
+# PAYLOAD_SECRET in .env durch einen langen, zufälligen Wert ersetzen
+pnpm seed:local
+pnpm dev
+```
 
-## Quick Start - local setup
+Payload läuft unter `http://localhost:3000/admin`. Beim ersten Aufruf den ersten Admin-Benutzer anlegen. Die lokale SQLite-Datei und `.env` sind nicht im Git-Repository.
 
-To spin up this template locally, follow these steps:
+`pnpm seed:local` legt drei **lokale Beispieldatensätze** und die bekannten Adressdaten an, falls sie fehlen. Die Namen sind Platzhalter. Wohnung 1 ist vorläufig als die seminarfähige Wohnung markiert. Der Seed überschreibt vorhandene Wohnungen nicht.
 
-### Clone
+## Daten in Payload
 
-After you click the `Deploy` button above, you'll want to have standalone copy of this repo on your machine. If you've already cloned this repo, skip to [Development](#development).
+- **Wohnungen:** DE/EN-Titel und Texte, Personenzahl, Betten, Fotos, Grundriss und private iCal-Links je Plattform. Jede der drei physischen Wohnungen hat genau einen Datensatz. Der Seminarraum ist eine alternative Nutzung von Wohnung 1 und kein vierter Raum.
+- **Website-Einstellungen:** DE/EN-Kopftexte, Adresse, Betreiber und später Kontaktdaten.
+- **Anfragen:** Übernachtung für eine bis drei Wohnungen oder ganztägiges Seminar für die seminarfähige Wohnung. Diese Datensätze sind nur im Admin lesbar.
+- **Manuelle Sperren:** Starttag inklusive, Endtag exklusiv. Sie erscheinen im Website-Kalender. Sie übertragen sich nicht automatisch zu Airbnb oder Booking.com.
+- **Medien:** Fotos und Grundrisse mit Pflichtfeld für Alternativtext.
 
-### Development
+Neue Wohnungen sind standardmäßig unveröffentlicht. Die Beispieldaten sind lokal veröffentlicht, damit die API für die Frontendentwicklung Antworten liefert.
 
-1. First [clone the repo](#clone) if you have not done so already
-2. `cd my-project && cp .env.example .env` to copy the example environment variables. You'll need to add the `MONGODB_URL` from your Cloud project to your `.env` if you want to use S3 storage and the MongoDB database that was created for you.
+## Schnittstellen für das Frontend
 
-3. `pnpm install && pnpm dev` to install dependencies and start the dev server
-4. open `http://localhost:3000` to open the app in your browser
+Das Frontend kann im selben Next.js-Projekt unter `src/app/(frontend)/` entstehen. Öffentliche Inhalte liefert Payload bereits unter `GET /api/accommodations?locale=de&sort=sortOrder` und `GET /api/globals/site-settings?locale=en`. Nicht veröffentlichte Wohnungen und private iCal-Links sind in der öffentlichen REST-Antwort nicht enthalten.
 
-That's it! Changes made in `./src` will be reflected in your app. Follow the on-screen instructions to login and create your first admin user. Then check out [Production](#production) once you're ready to build and serve your app, and [Deployment](#deployment) when you're ready to go live.
+`GET /api/public-availability?locale=de&from=2026-10-01&through=2026-10-31` liefert je Wohnung einen Status und belegte Datumswerte:
 
-#### Docker (Optional)
+```json
+{
+  "from": "2026-10-01",
+  "through": "2026-10-31",
+  "units": [
+    {
+      "id": 1,
+      "slug": "wohnung-1",
+      "name": "Wohnung 1",
+      "sleeps": 4,
+      "seminarCapable": true,
+      "accommodationId": 1,
+      "state": "not-connected",
+      "blockedDates": []
+    }
+  ]
+}
+```
 
-If you prefer to use Docker for local development instead of a local MongoDB instance, the provided docker-compose.yml file can be used.
+Nur bei `state: "ready"` darf das Frontend nicht aufgeführte Tage als frei anzeigen. `not-connected` und `error` bedeuten **unbekannte Verfügbarkeit**, auch wenn `blockedDates` leer ist. Manuelle Sperren stehen immer in `blockedDates`; die übrigen Tage bleiben bei fehlenden oder fehlerhaften Feeds unbekannt. Die iCal-Links werden nur auf dem Server abgerufen. Der Abruf prüft die Hostnamen auf Airbnb oder Booking.com und begrenzt Laufzeit und Dateigröße.
 
-To do so, follow these steps:
+`POST /api/public-inquiries` akzeptiert JSON mit `kind` (`stay` oder `seminar`), `accommodationSlugs`, `arrival`, bei Übernachtung `departure`, `name`, `email`, `guests` sowie optional `phone` und `message`. Das optionale Feld `company` ist ein unsichtbares Spam-Feld. Beispiel:
 
-- Modify the `MONGODB_URL` in your `.env` file to `mongodb://127.0.0.1/<dbname>`
-- Modify the `docker-compose.yml` file's `MONGODB_URL` to match the above `<dbname>`
-- Run `docker-compose up` to start the database, optionally pass `-d` to run in the background.
+```json
+{
+  "kind": "stay",
+  "accommodationSlugs": ["wohnung-1", "wohnung-2"],
+  "arrival": "2026-10-05",
+  "departure": "2026-10-07",
+  "name": "Beispielperson",
+  "email": "beispiel@example.invalid",
+  "guests": 6
+}
+```
 
-## How it works
+Für Übernachtungen gelten mindestens zwei Nächte. Eine Seminaranfrage betrifft genau die seminarfähige Wohnung. Die API speichert Anfragen; sie **reserviert keine Zeiten**. In Produktion antwortet der Endpunkt mit 503, bis `ENABLE_PUBLIC_INQUIRIES=true` ausdrücklich gesetzt ist.
 
-The Payload config is tailored specifically to the needs of most websites. It is pre-configured in the following ways:
+## Vor Veröffentlichung
 
-### Collections
+Die Airbnb- und Booking.com-Inserate müssen angelegt und ihre iCal-Links je Wohnung in Payload eingetragen werden. Der beidseitige Plattformabgleich und manuelle Sperren müssen mit echten Inseraten getestet werden. iCal hat eine Verzögerung; die Website nimmt daher nur Anfragen an. Nach einer Zusage müssen die betroffenen Nächte auf beiden Plattformen manuell gesperrt werden.
 
-See the [Collections](https://payloadcms.com/docs/configuration/collections) docs for details on how to extend this functionality.
-
-- #### Users (Authentication)
-
-  Users are auth-enabled collections that have access to the admin panel.
-
-  For additional help, see the official [Auth Example](https://github.com/payloadcms/payload/tree/3.x/examples/auth) or the [Authentication](https://payloadcms.com/docs/authentication/overview#authentication-overview) docs.
-
-- #### Media
-
-  This is the uploads enabled collection. It features pre-configured sizes, focal point and manual resizing to help you manage your pictures.
-
-### Docker
-
-Alternatively, you can use [Docker](https://www.docker.com) to spin up this template locally. To do so, follow these steps:
-
-1. Follow [steps 1 and 2 from above](#development), the docker-compose file will automatically use the `.env` file in your project root
-1. Next run `docker-compose up`
-1. Follow [steps 4 and 5 from above](#development) to login and create your first admin user
-
-That's it! The Docker instance will help you get up and running quickly while also standardizing the development environment across your teams.
-
-## Questions
-
-If you have any issues or questions, reach out to us on [Discord](https://discord.com/invite/payload) or start a [GitHub discussion](https://github.com/payloadcms/payload/discussions).
+Außerdem fehlen echte Fotos, Grundrisse, Preise, Kontakt-E-Mail, Datenschutztext, E-Mail-Benachrichtigung für neue Anfragen und ein dauerhafter Schutz gegen Formularspam. Für den Livebetrieb sind eine dauerhafte Datenbank und Medienspeicherung festzulegen. Diese Punkte sind keine Voraussetzungen für die lokale Frontendentwicklung, aber für eine Veröffentlichung.
