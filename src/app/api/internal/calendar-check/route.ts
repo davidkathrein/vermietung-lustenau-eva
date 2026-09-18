@@ -1,22 +1,14 @@
-import { timingSafeEqual } from 'node:crypto'
-
 import config from '@payload-config'
 import { getPayload } from 'payload'
 
 import { probeFeed } from '@/lib/availability'
+import { authorizedCron } from '@/lib/cron-auth'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-function authorized(request: Request): boolean {
-  const expected = process.env.ICAL_MONITOR_TOKEN
-  const actual = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
-  if (!expected || expected.length < 32 || !actual || Buffer.byteLength(actual) !== Buffer.byteLength(expected)) return false
-  return timingSafeEqual(Buffer.from(actual), Buffer.from(expected))
-}
-
 export async function GET(request: Request): Promise<Response> {
-  if (!authorized(request)) return new Response('Unauthorized', { status: 401 })
+  if (!authorizedCron(request)) return new Response('Unauthorized', { status: 401 })
   const payload = await getPayload({ config })
   const units = await payload.find({ collection: 'accommodations', depth: 0, limit: 100, where: { published: { equals: true } } })
   const settings = await payload.findGlobal({ slug: 'site-settings', locale: 'de', depth: 0 })

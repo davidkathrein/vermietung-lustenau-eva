@@ -1,19 +1,14 @@
-import { timingSafeEqual } from 'node:crypto'
-
 import config from '@payload-config'
 import { getPayload } from 'payload'
 
+import { authorizedCron } from '@/lib/cron-auth'
 import { runInstagramSync } from '@/lib/instagram-sync'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function GET(request: Request): Promise<Response> {
-  const expected = process.env.INSTAGRAM_SYNC_TOKEN
-  const actual = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
-  if (!expected || expected.length < 32 || !actual || Buffer.byteLength(actual) !== Buffer.byteLength(expected) || !timingSafeEqual(Buffer.from(actual), Buffer.from(expected))) {
-    return new Response('Unauthorized', { status: 401 })
-  }
+  if (!authorizedCron(request)) return new Response('Unauthorized', { status: 401 })
   const payload = await getPayload({ config })
   try { return Response.json(await runInstagramSync(payload), { headers: { 'Cache-Control': 'no-store' } }) }
   catch (error) {

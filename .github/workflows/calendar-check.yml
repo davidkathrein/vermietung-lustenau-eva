@@ -16,10 +16,10 @@ jobs:
       - name: Check imported calendar feeds
         env:
           CALENDAR_CHECK_URL: ${{ secrets.CALENDAR_CHECK_URL }}
-          CALENDAR_CHECK_TOKEN: ${{ secrets.CALENDAR_CHECK_TOKEN }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           test -n "$CALENDAR_CHECK_URL"
-          test -n "$CALENDAR_CHECK_TOKEN"
+          test -n "$CRON_SECRET"
           curl --fail --silent --show-error --max-time 90 \
-            --header "Authorization: Bearer $CALENDAR_CHECK_TOKEN" \
+            --header "Authorization: Bearer $CRON_SECRET" \
             "$CALENDAR_CHECK_URL"

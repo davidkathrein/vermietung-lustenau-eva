@@ -16,10 +16,10 @@ jobs:
       - name: Start or check Bright Data snapshot
         env:
           INSTAGRAM_SYNC_URL: ${{ secrets.INSTAGRAM_SYNC_URL }}
-          INSTAGRAM_SYNC_TOKEN: ${{ secrets.INSTAGRAM_SYNC_TOKEN }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           test -n "$INSTAGRAM_SYNC_URL"
-          test -n "$INSTAGRAM_SYNC_TOKEN"
+          test -n "$CRON_SECRET"
           curl --fail --silent --show-error --max-time 90 \
-            --header "Authorization: Bearer $INSTAGRAM_SYNC_TOKEN" \
+            --header "Authorization: Bearer $CRON_SECRET" \
             "$INSTAGRAM_SYNC_URL"
