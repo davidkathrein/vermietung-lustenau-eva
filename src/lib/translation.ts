@@ -1,5 +1,8 @@
 import type { ContentLocale, TranslationField } from './translation-fields'
 
+const defaultModel = 'deepseek/deepseek-v4-flash-0731:free'
+const fallbackModel = 'deepseek/deepseek-v4-flash-0731'
+
 export async function translateFields(
   fields: TranslationField[],
   sourceLocale: ContentLocale,
@@ -12,11 +15,11 @@ export async function translateFields(
   }
 
   const properties = Object.fromEntries(fields.map((_, index) => [String(index), { type: 'string' }]))
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const requestTranslation = (model: string) => fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: process.env.OPENROUTER_MODEL || 'openai/gpt-4.1-mini',
+      model,
       provider: { require_parameters: true },
       temperature: 0,
       messages: [
@@ -43,6 +46,11 @@ export async function translateFields(
     signal: AbortSignal.timeout(45_000),
     cache: 'no-store',
   })
+  const primaryModel = process.env.OPENROUTER_MODEL || defaultModel
+  let response = await requestTranslation(primaryModel)
+  if (response.status === 429 && primaryModel !== fallbackModel) {
+    response = await requestTranslation(fallbackModel)
+  }
 
   if (!response.ok) throw new Error('Translation provider rejected the request')
   const result = await response.json() as { choices?: { message?: { content?: unknown } }[] }
