@@ -12,6 +12,16 @@ function nonempty(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0
 }
 
+function linksAreComplete(rows: unknown): boolean {
+  return !Array.isArray(rows) || rows.every((row) => row && typeof row === 'object' && nonempty(at(row, 'link.label')))
+}
+
+function linkIsConfigured(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false
+  const link = value as Record<string, unknown>
+  return Boolean(link.reference || link.url || link.email || link.phone || link.anchor)
+}
+
 function richTextStrings(value: unknown): string[] {
   if (!value || typeof value !== 'object') return []
   const node = value as Record<string, unknown>
@@ -42,12 +52,15 @@ export function sourceIsComplete(entity: TranslationEntity, document: Record<str
       if (!nonempty(block.headline)) return false
       if (block.blockType === 'faq') return Array.isArray(block.items) && block.items.length > 0 && block.items.every((row) => row && typeof row === 'object' && nonempty((row as Record<string, unknown>).question) && richTextStrings((row as Record<string, unknown>).answer).length > 0)
       if (block.blockType === 'cta') return nonempty(at(block, 'action.label'))
+      if (block.blockType === 'hero') return linksAreComplete(block.actions)
+      if (block.blockType === 'content' && linkIsConfigured(block.action)) return nonempty(at(block, 'action.label'))
       return true
     })
   }
   if (entity === 'accommodations') return nonempty(document.slug) && nonempty(document.name) && nonempty(document.teaser)
+  if (entity === 'instagram-posts') return nonempty(document.caption)
   if (entity === 'media') return nonempty(document.alt)
-  return nonempty(document.siteName)
+  return nonempty(document.siteName) && linksAreComplete(document.navigation)
 }
 
 export function reviewFields(entity: TranslationEntity, document: Record<string, unknown>): ReviewField[] {
@@ -55,6 +68,8 @@ export function reviewFields(entity: TranslationEntity, document: Record<string,
   if (entity === 'accommodations') {
     addText(fields, 'slug', document.slug, 'slug')
     for (const path of ['name', 'teaser', 'description', 'bedSetup']) addText(fields, path, document[path])
+  } else if (entity === 'instagram-posts') {
+    addText(fields, 'caption', document.caption)
   } else if (entity === 'media') {
     for (const path of ['alt', 'caption']) addText(fields, path, document[path])
   } else if (entity === 'site-settings') {

@@ -10,7 +10,7 @@ export const runtime = 'nodejs'
 type TranslationRequest = { entity?: unknown; id?: unknown; targetLocale?: unknown }
 
 function validEntity(value: unknown): value is TranslationEntity {
-  return value === 'accommodations' || value === 'media' || value === 'site-settings' || value === 'pages'
+  return value === 'accommodations' || value === 'instagram-posts' || value === 'media' || value === 'site-settings' || value === 'pages'
 }
 
 function validInput(input: TranslationRequest): input is { entity: TranslationEntity; id?: number; targetLocale: ContentLocale } {

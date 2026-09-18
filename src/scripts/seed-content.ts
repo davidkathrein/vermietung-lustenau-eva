@@ -1,5 +1,7 @@
 import 'dotenv/config'
 
+import path from 'node:path'
+
 import { getPayload } from 'payload'
 
 import type { Page } from '../payload-types'
@@ -8,6 +10,39 @@ import config from '../payload.config'
 const payload = await getPayload({ config })
 type Layout = Page['layout']
 const rich = (value: string) => ({ root: { type: 'root', version: 1, format: '', indent: 0, direction: 'ltr', children: [{ type: 'paragraph', version: 1, format: '', indent: 0, direction: 'ltr', children: [{ type: 'text', version: 1, format: 0, mode: 'normal', style: '', detail: 0, text: value }] }] } })
+
+async function seedImage(filename: string, germanAlt: string, englishAlt: string): Promise<number> {
+  const existing = await payload.find({ collection: 'media', where: { filename: { equals: filename } }, limit: 1, depth: 0 })
+  if (existing.docs[0]) return existing.docs[0].id
+  const created = await payload.create({ collection: 'media', locale: 'de', filePath: path.resolve(process.cwd(), 'public/seed-media', filename), data: { alt: germanAlt } })
+  await payload.update({ collection: 'media', id: created.id, locale: 'en', data: { alt: englishAlt } })
+  return created.id
+}
+
+const photos = {
+  hero: await seedImage('hero-concept.jpg', 'Heller Wohnbereich mit Holztisch und Sofa', 'Bright living area with a wooden table and sofa'),
+  apartments: [
+    await seedImage('apartment-1-concept.jpg', 'Heller Raum mit langem Tisch für Seminare', 'Bright room with a long table for seminars'),
+    await seedImage('apartment-2-concept.jpg', 'Ruhiges Schlafzimmer mit Doppelbett', 'Calm bedroom with a double bed'),
+    await seedImage('apartment-3-concept.jpg', 'Gemütlicher Wohnbereich mit grünem Sofa', 'Comfortable living area with a green sofa'),
+  ],
+}
+
+async function addMissingPageImages(id: number, imagesByIndex: Record<number, number>) {
+  for (const locale of ['de', 'en'] as const) {
+    const saved = await payload.findByID({ collection: 'pages', id, locale, fallbackLocale: false, depth: 0 })
+    let changed = false
+    const layout = saved.layout.map((block, index) => {
+      const image = imagesByIndex[index]
+      if (!image || !('image' in block) || block.image) return block
+      changed = true
+      return { ...block, image }
+    }) as Layout
+    if (changed) {
+      await payload.update({ collection: 'pages', id, locale, data: { layout, _status: 'published' } })
+    }
+  }
+}
 function withIds(layout: Layout, reference: Layout): Layout {
   return layout.map((block, index) => {
     const saved = reference[index] as Record<string, unknown> | undefined
@@ -78,9 +113,10 @@ for (const [index, unit] of units.entries()) {
       await payload.update({ collection: 'accommodations', id: legacy.id, locale: 'en', draft: true, data: { slug: unit.enSlug, name: unit.en.name, teaser: unit.en.teaser, description: unit.en.description, bedSetup: unit.en.beds } })
       await payload.update({ collection: 'accommodations', id: legacy.id, locale: 'de', data: { _status: 'published' } })
     }
+    if (!legacy.gallery?.length) await payload.update({ collection: 'accommodations', id: legacy.id, locale: 'de', data: { gallery: [{ image: photos.apartments[index] }], _status: 'published' } })
     continue
   }
-  const created = await payload.create({ collection: 'accommodations', locale: 'de', draft: true, data: { slug: unit.deSlug, name: unit.de.name, teaser: unit.de.teaser, description: unit.de.description, sleeps: unit.sleeps, bedSetup: unit.de.beds, seminarCapable: unit.seminar, seminarCapacity: unit.seminar ? unit.seminarCapacity : undefined, sortOrder: index + 1, published: true } })
+  const created = await payload.create({ collection: 'accommodations', locale: 'de', draft: true, data: { slug: unit.deSlug, name: unit.de.name, teaser: unit.de.teaser, description: unit.de.description, sleeps: unit.sleeps, bedSetup: unit.de.beds, seminarCapable: unit.seminar, seminarCapacity: unit.seminar ? unit.seminarCapacity : undefined, sortOrder: index + 1, published: true, gallery: [{ image: photos.apartments[index] }] } })
   await payload.update({ collection: 'accommodations', id: created.id, locale: 'en', draft: true, data: { slug: unit.enSlug, name: unit.en.name, teaser: unit.en.teaser, description: unit.en.description, bedSetup: unit.en.beds } })
   await payload.update({ collection: 'accommodations', id: created.id, locale: 'de', data: { _status: 'published' } })
 }
@@ -116,7 +152,7 @@ const contact = await page('contact', {
 })
 
 const internal = (label: string, id: number) => ({ label, kind: 'internal' as const, reference: { relationTo: 'pages' as const, value: id } })
-await page('homepage', {
+const homepage = await page('homepage', {
   slug: 'homepage', title: 'Wohnen in Lustenau', description: 'Drei persönlich geführte Wohnungen in Lustenau. Für Aufenthalte im Rheintal und Seminare in Wohnung 1.',
   layout: [
     { blockType: 'hero', eyebrow: 'Lustenau · Vorarlberg', headline: 'Ankommen. Durchatmen. Bleiben.', intro: 'Drei Wohnungen für Tage, die sich nach mehr als einem Zwischenstopp anfühlen.', actions: [{ link: internal('Wohnungen entdecken', apartments.id) }, { link: internal('Anfrage senden', contact.id) }] },
@@ -141,6 +177,10 @@ await page('homepage', {
     ] },
   ] as Layout,
 })
+
+await addMissingPageImages(apartments.id, { 0: photos.hero })
+await addMissingPageImages(contact.id, { 0: photos.hero })
+await addMissingPageImages(homepage.id, { 0: photos.hero, 1: photos.apartments[2] })
 
 const latest = await payload.findGlobal({ slug: 'site-settings', locale: 'de', depth: 0 })
 if (!latest.navigation?.length) {

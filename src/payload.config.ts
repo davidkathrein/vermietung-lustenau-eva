@@ -18,6 +18,7 @@ import { Inquiries } from './collections/Inquiries'
 import { ManualBlocks } from './collections/ManualBlocks'
 import { CalendarHealth } from './collections/CalendarHealth'
 import { SlugRedirects } from './collections/SlugRedirects'
+import { InstagramPosts } from './collections/InstagramPosts'
 import { SiteSettings } from './globals/SiteSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -32,7 +33,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Pages, Accommodations, ManualBlocks, Inquiries, CalendarHealth, SlugRedirects],
+  collections: [Users, Media, Pages, Accommodations, InstagramPosts, ManualBlocks, Inquiries, CalendarHealth, SlugRedirects],
   globals: [SiteSettings],
   i18n: {
     fallbackLanguage: 'de',

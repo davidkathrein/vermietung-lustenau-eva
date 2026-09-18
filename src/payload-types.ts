@@ -71,6 +71,7 @@ export interface Config {
     media: Media;
     pages: Page;
     accommodations: Accommodation;
+    'instagram-posts': InstagramPost;
     'manual-blocks': ManualBlock;
     inquiries: Inquiry;
     'calendar-health': CalendarHealth;
@@ -86,6 +87,7 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     accommodations: AccommodationsSelect<false> | AccommodationsSelect<true>;
+    'instagram-posts': InstagramPostsSelect<false> | InstagramPostsSelect<true>;
     'manual-blocks': ManualBlocksSelect<false> | ManualBlocksSelect<true>;
     inquiries: InquiriesSelect<false> | InquiriesSelect<true>;
     'calendar-health': CalendarHealthSelect<false> | CalendarHealthSelect<true>;
@@ -402,6 +404,21 @@ export interface Accommodation {
   _status?: ('draft' | 'published') | null;
 }
 /**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "instagram-posts".
+ */
+export interface InstagramPost {
+  id: number;
+  externalId: string;
+  permalink: string;
+  caption?: string | null;
+  image?: (number | null) | Media;
+  publishedAt?: string | null;
+  visible?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Blocks dates on the website and in the private calendar export. Platforms import calendars with a delay.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -515,6 +532,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'accommodations';
         value: number | Accommodation;
+      } | null)
+    | ({
+        relationTo: 'instagram-posts';
+        value: number | InstagramPost;
       } | null)
     | ({
         relationTo: 'manual-blocks';
@@ -787,6 +808,20 @@ export interface AccommodationsSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "instagram-posts_select".
+ */
+export interface InstagramPostsSelect<T extends boolean = true> {
+  externalId?: T;
+  permalink?: T;
+  caption?: T;
+  image?: T;
+  publishedAt?: T;
+  visible?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

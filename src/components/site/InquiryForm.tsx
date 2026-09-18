@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { todayInVienna } from '@/lib/calendar-day'
 import type { SiteLocale } from '@/lib/locale'
 import type { Accommodation } from '@/payload-types'
 
@@ -27,10 +28,6 @@ function previousDay(day: string): string {
   const date = new Date(`${day}T12:00:00Z`)
   date.setUTCDate(date.getUTCDate() - 1)
   return date.toISOString().slice(0, 10)
-}
-
-function todayInVienna(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Vienna', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 }
 
 export function InquiryForm({ locale, accommodations, mode, preselectedAccommodation }: { locale: SiteLocale; accommodations: Accommodation[]; mode: 'stay' | 'seminar' | 'both'; preselectedAccommodation?: string }) {

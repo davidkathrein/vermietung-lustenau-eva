@@ -1,6 +1,6 @@
 # Wohnen in Lustenau
 
-Zweisprachige Website (Deutsch und Englisch) mit Payload CMS, Next.js und einem gemeinsamen Kalender für drei Wohnungen. Wohnung 1 ist alternativ als Seminarraum nutzbar. Die Seite verwendet das bestehende Theme und Shadcn-Komponenten. Bis echte Fotos hochgeladen werden, zeigt das öffentliche Frontend neutrale Flächen statt erfundener Immobilienbilder.
+Zweisprachige Website (Deutsch und Englisch) mit Payload CMS, Next.js und einem gemeinsamen Kalender für drei Wohnungen. Wohnung 1 ist alternativ als Seminarraum nutzbar. Die Seite verwendet das bestehende Theme und Shadcn-Komponenten. Der Seed nutzt für die unveröffentlichte Vorschau vier generierte Konzeptfotos; sie zeigen nicht die echten Wohnungen.
 
 ## Lokal starten
 
@@ -13,7 +13,7 @@ pnpm seed:content
 pnpm dev
 ```
 
-`/` leitet permanent auf `/de` weiter. Die zweite Sprache liegt unter `/en`. Das CMS ist unter `/admin` erreichbar. Der Seed legt drei Wohnungen, `homepage`, Wohnungs- und Kontaktseite mit DE/EN-Inhalten an und veröffentlicht sie erst nach Befüllung beider Sprachen. Vorhandene redaktionell bearbeitete Datensätze bleiben unangetastet. Die SQLite- und PostgreSQL-Migrationen liegen getrennt unter `src/migrations/` und `src/postgres-migrations/`. Automatisches Schema-Pushing ist deaktiviert. Der nächste Vercel-Build führt Migration, idempotenten Content-Seed und Build in dieser Reihenfolge aus; Produktionsdaten werden nicht allein durch lokale Änderungen befüllt.
+`/` leitet permanent auf `/de` weiter. Die zweite Sprache liegt unter `/en`. Das CMS ist unter `/admin` erreichbar. Der Seed legt drei Wohnungen, `homepage`, Wohnungs- und Kontaktseite mit DE/EN-Inhalten sowie Medien für die Vorschau an und veröffentlicht sie erst nach Befüllung beider Sprachen. Vorhandene redaktionell bearbeitete Datensätze bleiben unangetastet. Die SQLite- und PostgreSQL-Migrationen liegen getrennt unter `src/migrations/` und `src/postgres-migrations/`. Automatisches Schema-Pushing ist deaktiviert. Der nächste Vercel-Build führt Migration, idempotenten Content-Seed und Build in dieser Reihenfolge aus; Produktionsdaten werden nicht allein durch lokale Änderungen befüllt.
 
 ## Redaktion
 
@@ -21,6 +21,7 @@ pnpm dev
 - Seiten und Wohnungen haben Entwürfe, Autosave und sprachspezifische Slugs. Das Seitenformular bietet eine eingebettete Live-Vorschau. Eine Veröffentlichung erfordert beide vollständig ausgefüllten Sprachen einschließlich aller Pflicht-Metadaten. Alte öffentliche Slugs erhalten automatische permanente Weiterleitungen.
 - Der Sprachwechsel im Bearbeitungsformular ist unabhängig von der Sprache der Admin-Oberfläche. Die KI-Übersetzung wird erst bei vollständiger Quellsprache angeboten. Sie liefert Vorschläge für Texte, Rich-Text-Formatierung und Slugs; jedes Feld kann einzeln oder über „Alles übernehmen“ ins Formular übernommen werden. Speichern und Veröffentlichen bleiben getrennte, manuelle Schritte. `OPENROUTER_API_KEY` ist nur serverseitig nötig.
 - Medien haben sprachspezifischen Alternativtext und eine optionale sprachspezifische Caption. Eine gepflegte Caption erscheint immer als Overlay im Bild. Galerien haben keine zweite Caption-Quelle.
+- Instagram-Beiträge haben ein eigenes Datenmodell für externe ID, Permalink, Text, Bild und Veröffentlichungsdatum. Ein Scraper oder öffentlicher Feed ist noch nicht angebunden.
 - Interne Links speichern direkte Beziehungen zu Seiten oder Wohnungen; zusätzlich sind Web-, Mail-, Telefon- und Ankerlinks möglich. Die Hauptnavigation wird in Website-Einstellungen gepflegt, der Footer listet alle veröffentlichten Wohnungen automatisch.
 
 ## Anfragen und Kalender
@@ -35,7 +36,7 @@ Ein GitHub-Actions-Workflow prüft verbundene Feeds ungefähr alle 30 Minuten ü
 
 ## Vor öffentlicher Freigabe
 
-Echte Wohnungsfotos und Grundrisse, Kontakt-E-Mail und -Telefon, Plattform-iCal-Links sowie die Resend-Domain müssen ergänzt und mit echten Inseraten geprüft werden. Anfragen bleiben bis zur bewussten Freischaltung deaktiviert. Der Seed enthält realistische, aber redaktionell zu prüfende Beschreibungstexte und keine Platzhalter-Kennzeichnung.
+Die generierten Konzeptfotos unter `public/seed-media/` müssen vor der Freigabe durch echte Wohnungsfotos ersetzt werden. Auch Grundrisse, Kontakt-E-Mail und -Telefon, Plattform-iCal-Links sowie die Resend-Domain müssen ergänzt und mit echten Inseraten geprüft werden. Anfragen bleiben bis zur bewussten Freischaltung deaktiviert. Die Beschreibungstexte sind ebenfalls redaktionell zu prüfen.
 
 ## Prüfungen
 
