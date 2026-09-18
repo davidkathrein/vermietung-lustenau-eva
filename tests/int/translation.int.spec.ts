@@ -8,11 +8,14 @@ import { translateFields } from '../../src/lib/translation'
 import { translationFields } from '../../src/lib/translation-fields'
 
 const originalKey = process.env.OPENROUTER_API_KEY
+const originalModel = process.env.OPENROUTER_MODEL
 
 afterEach(() => {
   vi.restoreAllMocks()
   if (originalKey === undefined) delete process.env.OPENROUTER_API_KEY
   else process.env.OPENROUTER_API_KEY = originalKey
+  if (originalModel === undefined) delete process.env.OPENROUTER_MODEL
+  else process.env.OPENROUTER_MODEL = originalModel
 })
 
 describe('admin translation', () => {
@@ -43,6 +46,7 @@ describe('admin translation', () => {
 
   it('accepts structured translations without saving or returning provider metadata', async () => {
     process.env.OPENROUTER_API_KEY = 'test-key'
+    delete process.env.OPENROUTER_MODEL
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
       choices: [{ message: { content: '{"0":"Apartment One","1":"View"}' } }],
     }), { status: 200 }))
@@ -58,7 +62,35 @@ describe('admin translation', () => {
     ])
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe('https://openrouter.ai/api/v1/chat/completions')
+    expect(JSON.parse(String(init?.body)).model).toBe('deepseek/deepseek-v4-flash-0731:free')
     expect(JSON.parse(String(init?.body)).response_format.json_schema.strict).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries once with the paid DeepSeek model when the free model is rate limited', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-key'
+    delete process.env.OPENROUTER_MODEL
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('', { status: 429 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        choices: [{ message: { content: '{"0":"Apartment One"}' } }],
+      }), { status: 200 }))
+
+    await expect(translateFields([{ path: 'name', text: 'Wohnung Eins' }], 'de', 'en'))
+      .resolves.toEqual([{ path: 'name', text: 'Apartment One' }])
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).model).toBe('deepseek/deepseek-v4-flash-0731:free')
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body)).model).toBe('deepseek/deepseek-v4-flash-0731')
+  })
+
+  it('does not use the paid fallback for other provider errors', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-key'
+    delete process.env.OPENROUTER_MODEL
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 503 }))
+
+    await expect(translateFields([{ path: 'name', text: 'Wohnung Eins' }], 'de', 'en'))
+      .rejects.toThrow('Translation provider rejected the request')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('reads the saved source locale for an authenticated editor without saving the result', async () => {
