@@ -166,7 +166,7 @@ export async function syncInstagram(payload: Payload, manual = false): Promise<R
     }
     if (progress?.status !== 'ready') throw new Error('Unknown Bright Data snapshot status')
     const data = await brightRequest(`/snapshot/${encodeURIComponent(snapshot)}?format=json`, key)
-    const imported = await importPosts(payload, data, instagramProfileUrl(status.profileUrl) || profileUrl)
+    const imported = await importPosts(payload, data, instagramProfileUrl(status.profileUrl ?? undefined) || profileUrl)
     await payload.updateGlobal({ slug: 'instagram-sync-status', data: { snapshotId: null, completedAt: now.toISOString(), lastImportedCount: imported, lastError: null } })
     return { state: 'imported', imported }
   }
