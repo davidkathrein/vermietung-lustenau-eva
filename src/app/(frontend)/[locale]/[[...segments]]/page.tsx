@@ -85,5 +85,21 @@ export default async function ContentPage({ params }: Props) {
   }
 
   const unit = content.accommodation
-  return <main className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24"><Link href={`/${locale}`} className="text-sm text-muted-foreground hover:underline">← {locale === 'de' ? 'Zur Startseite' : 'Back to home'}</Link><div className="mt-10 grid gap-12 lg:grid-cols-2"><div><div className="mb-5 flex flex-wrap gap-2"><Badge variant="secondary">{unit.sleeps} {locale === 'de' ? 'Personen' : 'guests'}</Badge>{unit.seminarCapable && <Badge variant="outline">{locale === 'de' ? 'Auch als Seminarraum' : 'Also for seminars'}</Badge>}</div><h1 className="font-heading text-5xl leading-tight md:text-6xl">{unit.name}</h1><p className="mt-6 text-lg leading-8 text-muted-foreground">{unit.teaser}</p>{unit.description && <p className="mt-6 leading-8">{unit.description}</p>}{unit.bedSetup && <p className="mt-6 text-sm">{locale === 'de' ? 'Betten' : 'Beds'}: {unit.bedSetup}</p>}<a href="#anfrage" className={`${buttonVariants({ size: 'lg' })} mt-9`}>{locale === 'de' ? 'Anfrage senden' : 'Send inquiry'}</a></div><div className="grid gap-4">{unit.gallery?.length ? unit.gallery.map((row, index) => <MediaFigure key={row.id ?? index} media={row.image} className="aspect-[4/3]" />) : <div className="flex aspect-[4/3] items-end rounded-xl bg-secondary p-8"><span className="font-heading text-7xl text-primary/35">{unit.name}</span></div>}</div></div><section id="anfrage" className="mt-20 border-t border-border pt-16"><h2 className="mb-8 font-heading text-3xl md:text-5xl">{locale === 'de' ? 'Verfügbarkeit und Anfrage' : 'Availability and inquiry'}</h2><InquiryForm locale={locale} accommodations={accommodations} mode={unit.seminarCapable ? 'both' : 'stay'} preselectedAccommodation={unit.slug} /></section></main>
+  return <main>
+    <div className="site-room site-container">
+      <Link href={`/${locale}/${apartmentBase(locale)}`} className="site-back"><span aria-hidden="true">←</span>{locale === 'de' ? 'Alle Wohnungen' : 'All apartments'}</Link>
+      <div className="site-room__heading">
+        <div><p className="site-eyebrow">{locale === 'de' ? 'Wohnen in Lustenau' : 'Stay in Lustenau'}</p><h1>{unit.name}</h1></div>
+        <div className="site-room__lead"><p>{unit.teaser}</p><div className="site-room__badges"><Badge variant="outline">{locale === 'de' ? `Bis zu ${unit.sleeps} Personen` : `Up to ${unit.sleeps} guests`}</Badge>{unit.seminarCapable && <Badge variant="outline">{locale === 'de' ? 'Auch als Seminarraum' : 'Also for seminars'}</Badge>}</div></div>
+      </div>
+      <div className={`site-room__gallery ${unit.gallery && unit.gallery.length > 1 ? 'site-room__gallery--multiple' : ''}`}>
+        {unit.gallery?.length ? unit.gallery.map((row, index) => <MediaFigure key={row.id ?? index} media={row.image} className="site-room__photo" eager={index === 0} />) : <div className="site-room__placeholder">{unit.name}</div>}
+      </div>
+      <div className="site-room__details">
+        <div><p className="site-eyebrow">{locale === 'de' ? 'Der Raum' : 'The space'}</p>{unit.description && <p className="site-room__description">{unit.description}</p>}</div>
+        <div className="site-room__summary"><p className="site-room__summary-label">{locale === 'de' ? 'Auf einen Blick' : 'At a glance'}</p><dl><div><dt>{locale === 'de' ? 'Gäste' : 'Guests'}</dt><dd>{locale === 'de' ? `Bis zu ${unit.sleeps} Personen` : `Up to ${unit.sleeps} guests`}</dd></div>{unit.bedSetup && <div><dt>{locale === 'de' ? 'Schlafplätze' : 'Sleeping arrangements'}</dt><dd>{unit.bedSetup}</dd></div>}</dl><a href="#anfrage" className={`${buttonVariants({ size: 'lg' })} site-action`}>{locale === 'de' ? 'Anfrage senden' : 'Send inquiry'}<span aria-hidden="true">↗</span></a></div>
+      </div>
+    </div>
+    <section id="anfrage" className="site-inquiry site-section"><div className="site-container"><div className="site-section-intro"><p className="site-eyebrow">{locale === 'de' ? 'Unverbindlich anfragen' : 'No-obligation inquiry'}</p><h2>{locale === 'de' ? 'Verfügbarkeit und Anfrage' : 'Availability and inquiry'}</h2></div><InquiryForm locale={locale} accommodations={accommodations} mode={unit.seminarCapable ? 'both' : 'stay'} preselectedAccommodation={unit.slug} /></div></section>
+  </main>
 }
