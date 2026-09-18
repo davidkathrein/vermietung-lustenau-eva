@@ -18,6 +18,11 @@ export default async function LocaleLayout({ children, params }: { children: Rea
   if (!isSiteLocale(locale)) notFound()
   const [settings, accommodations] = await Promise.all([getPublicSettings(locale), getPublicAccommodations(locale)])
   const siteName = settings.siteName || 'Wohnen in Lustenau'
+  const footer = settings.footer
+  const footerLinks = footer?.links?.flatMap((row) => {
+    const href = hrefForLink(row.link, locale)
+    return href && row.link?.label ? [{ id: row.id, href, label: row.link.label, newTab: row.link.newTab }] : []
+  }) || []
 
   return (
     <html lang={locale} className={`${heading.variable} ${body.variable}`}>
@@ -38,12 +43,13 @@ export default async function LocaleLayout({ children, params }: { children: Rea
           </header>
           <div className="flex-1">{children}</div>
           <footer className="bg-primary py-12 text-primary-foreground">
-            <div className="mx-auto grid max-w-7xl gap-10 px-5 md:grid-cols-3 md:px-8">
-              <div><p className="font-heading text-2xl">{siteName}</p><p className="mt-3 text-sm opacity-80">{settings.streetAddress}<br />{settings.postalCode} {settings.city}</p></div>
-              <div><p className="mb-3 text-sm font-semibold uppercase tracking-widest opacity-70">{locale === 'de' ? 'Wohnungen' : 'Apartments'}</p><ul className="space-y-2">{accommodations.map((unit) => <li key={unit.id}><Link href={accommodationPath(locale, unit.slug)} className="text-sm hover:underline">{unit.name}</Link></li>)}</ul></div>
-              <div><p className="mb-3 text-sm font-semibold uppercase tracking-widest opacity-70">{locale === 'de' ? 'Kontakt' : 'Contact'}</p>{settings.contactEmail && <a href={`mailto:${settings.contactEmail}`} className="block text-sm hover:underline">{settings.contactEmail}</a>}{settings.contactPhone && <a href={`tel:${settings.contactPhone.replace(/[^\d+]/g, '')}`} className="mt-2 block text-sm hover:underline">{settings.contactPhone}</a>}</div>
+            <div className={`mx-auto grid max-w-7xl gap-10 px-5 md:px-8 ${footerLinks.length ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+              <div><p className="font-heading text-2xl">{footer?.title || siteName}</p>{footer?.description && <p className="mt-3 whitespace-pre-line text-sm opacity-80">{footer.description}</p>}<p className="mt-3 text-sm opacity-80">{settings.streetAddress}<br />{settings.postalCode} {settings.city}</p></div>
+              <div><p className="mb-3 text-sm font-semibold uppercase tracking-widest opacity-70">{footer?.apartmentsHeading || (locale === 'de' ? 'Wohnungen' : 'Apartments')}</p><ul className="space-y-2">{accommodations.map((unit) => <li key={unit.id}><Link href={accommodationPath(locale, unit.slug)} className="text-sm hover:underline">{unit.name}</Link></li>)}</ul></div>
+              {footerLinks.length > 0 && <div><p className="mb-3 text-sm font-semibold uppercase tracking-widest opacity-70">{footer?.linksHeading || (locale === 'de' ? 'Weitere Seiten' : 'More pages')}</p><ul className="space-y-2">{footerLinks.map((link) => <li key={link.id}><Link href={link.href} className="text-sm hover:underline" target={link.newTab ? '_blank' : undefined} rel={link.newTab ? 'noopener noreferrer' : undefined}>{link.label}</Link></li>)}</ul></div>}
+              <div><p className="mb-3 text-sm font-semibold uppercase tracking-widest opacity-70">{footer?.contactHeading || (locale === 'de' ? 'Kontakt' : 'Contact')}</p>{settings.contactEmail && <a href={`mailto:${settings.contactEmail}`} className="block text-sm hover:underline">{settings.contactEmail}</a>}{settings.contactPhone && <a href={`tel:${settings.contactPhone.replace(/[^\d+]/g, '')}`} className="mt-2 block text-sm hover:underline">{settings.contactPhone}</a>}</div>
             </div>
-            <div className="mx-auto mt-10 max-w-7xl px-5 md:px-8"><Separator className="opacity-20" /><p className="mt-5 text-xs opacity-65">© {new Date().getFullYear()} {siteName}</p></div>
+            <div className="mx-auto mt-10 max-w-7xl px-5 md:px-8"><Separator className="opacity-20" /><p className="mt-5 text-xs opacity-65">© {new Date().getFullYear()} {footer?.copyrightText || siteName}</p></div>
           </footer>
         </div>
       </body>

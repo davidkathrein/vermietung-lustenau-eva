@@ -43,6 +43,7 @@ function missingFieldName(path: string, isGermanUI: boolean): string {
   }
   if (parts[0] === 'layout' && parts.length === 2) return `Block ${Number(parts[1]) + 1}`
   if (parts[0] === 'navigation') return `Navigation ${Number(parts[1]) + 1} · ${label}`
+  if (parts[0] === 'footer' && parts[1] === 'links') return `Footer · Link ${Number(parts[2]) + 1} · ${label}`
   return label
 }
 

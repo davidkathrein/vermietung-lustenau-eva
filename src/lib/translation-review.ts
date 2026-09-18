@@ -77,6 +77,10 @@ export function missingTranslationFields(entity: TranslationEntity, document: Re
     if (Array.isArray(document.navigation)) document.navigation.forEach((row, index) => {
       if (!nonempty(at(row, 'link.label'))) missing.push(`navigation.${index}.link.label`)
     })
+    const footerLinks = at(document, 'footer.links')
+    if (Array.isArray(footerLinks)) footerLinks.forEach((row, index) => {
+      if (!nonempty(at(row, 'link.label'))) missing.push(`footer.links.${index}.link.label`)
+    })
   }
   return missing
 }
@@ -97,6 +101,9 @@ export function reviewFields(entity: TranslationEntity, document: Record<string,
   } else if (entity === 'site-settings') {
     for (const path of ['siteName', 'country']) addText(fields, path, document[path])
     if (Array.isArray(document.navigation)) document.navigation.forEach((_, index) => addText(fields, `navigation.${index}.link.label`, at(document, `navigation.${index}.link.label`)))
+    for (const path of ['footer.title', 'footer.description', 'footer.apartmentsHeading', 'footer.linksHeading', 'footer.contactHeading', 'footer.copyrightText']) addText(fields, path, at(document, path))
+    const footerLinks = at(document, 'footer.links')
+    if (Array.isArray(footerLinks)) footerLinks.forEach((_, index) => addText(fields, `footer.links.${index}.link.label`, at(document, `footer.links.${index}.link.label`)))
   } else if (entity === 'pages') {
     addText(fields, 'slug', document.slug, 'slug')
     addText(fields, 'title', document.title)

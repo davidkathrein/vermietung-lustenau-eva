@@ -19,6 +19,8 @@ describe('admin translation', () => {
   it('hides translation until existing link labels are filled', () => {
     expect(sourceIsComplete('site-settings', { siteName: 'Wohnen', navigation: [{ link: { kind: 'internal' } }] })).toBe(false)
     expect(sourceIsComplete('site-settings', { siteName: 'Wohnen', navigation: [{ link: { label: 'Wohnungen' } }] })).toBe(true)
+    expect(sourceIsComplete('site-settings', { siteName: 'Wohnen', footer: { links: [{ link: { kind: 'email' } }] } })).toBe(false)
+    expect(sourceIsComplete('site-settings', { siteName: 'Wohnen', footer: { links: [{ link: { label: 'Kontakt', kind: 'email' } }] } })).toBe(true)
     const page = { slug: 'homepage', title: 'Startseite', seo: { metaTitle: 'Wohnen', metaDescription: 'Lustenau' }, layout: [{ blockType: 'hero', headline: 'Ankommen', actions: [{ link: { kind: 'internal' } }] }] }
     expect(sourceIsComplete('pages', page)).toBe(false)
     page.layout[0].actions[0].link = { kind: 'internal', label: 'Wohnungen' } as typeof page.layout[0]['actions'][0]['link']
@@ -83,6 +85,13 @@ describe('admin translation', () => {
     ])
     expect(reviewFields('site-settings', { siteName: 'Lustenau', country: 'Österreich', contactEmail: 'private@example.invalid' }))
       .toEqual([{ path: 'siteName', kind: 'text', value: 'Lustenau' }, { path: 'country', kind: 'text', value: 'Österreich' }])
+    expect(reviewFields('site-settings', { siteName: 'Lustenau', footer: { title: 'Willkommen', apartmentsHeading: 'Räume', links: [{ link: { label: 'Kontakt', kind: 'email' } }] } }))
+      .toEqual([
+        { path: 'siteName', kind: 'text', value: 'Lustenau' },
+        { path: 'footer.title', kind: 'text', value: 'Willkommen' },
+        { path: 'footer.apartmentsHeading', kind: 'text', value: 'Räume' },
+        { path: 'footer.links.0.link.label', kind: 'text', value: 'Kontakt' },
+      ])
     expect(reviewFields('media', { alt: 'Hausfront', caption: 'Abendlicht', filename: 'photo.jpg' }))
       .toEqual([{ path: 'alt', kind: 'text', value: 'Hausfront' }, { path: 'caption', kind: 'text', value: 'Abendlicht' }])
     expect(reviewFields('instagram-posts', { caption: 'Ein Blick in die Wohnung', permalink: 'https://www.instagram.com/p/example/' }))

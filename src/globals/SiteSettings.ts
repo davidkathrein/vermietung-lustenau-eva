@@ -14,6 +14,18 @@ export const SiteSettings: GlobalConfig = {
       name: 'navigation', type: 'array', label: { de: 'Hauptnavigation', en: 'Main navigation' }, maxRows: 8,
       fields: [linkField('link', true)],
     },
+    {
+      name: 'footer', type: 'group', label: { de: 'Footer', en: 'Footer' },
+      fields: [
+        { name: 'title', type: 'text', label: { de: 'Titel', en: 'Title' }, localized: true, admin: { description: { de: 'Leer lassen, um den Website-Namen zu verwenden.', en: 'Leave empty to use the website name.' } } },
+        { name: 'description', type: 'textarea', label: { de: 'Kurztext', en: 'Short text' }, localized: true },
+        { name: 'apartmentsHeading', type: 'text', label: { de: 'Überschrift Wohnungen', en: 'Apartments heading' }, localized: true },
+        { name: 'linksHeading', type: 'text', label: { de: 'Überschrift weitere Links', en: 'Other links heading' }, localized: true },
+        { name: 'links', type: 'array', label: { de: 'Weitere Links', en: 'Other links' }, maxRows: 12, fields: [linkField('link', true)] },
+        { name: 'contactHeading', type: 'text', label: { de: 'Überschrift Kontakt', en: 'Contact heading' }, localized: true },
+        { name: 'copyrightText', type: 'text', label: { de: 'Copyright-Text', en: 'Copyright text' }, localized: true, admin: { description: { de: 'Das aktuelle Jahr und © werden automatisch ergänzt.', en: 'The current year and © are added automatically.' } } },
+      ],
+    },
     { name: 'operatorName', type: 'text', label: { de: 'Betreiberin', en: 'Operator' } },
     { name: 'contactEmail', type: 'email', label: { de: 'Kontakt-E-Mail', en: 'Contact email' } },
     { name: 'contactPhone', type: 'text', label: { de: 'Kontakttelefon', en: 'Contact phone' } },

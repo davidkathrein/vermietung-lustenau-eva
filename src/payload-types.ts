@@ -953,6 +953,43 @@ export interface SiteSetting {
         id?: string | null;
       }[]
     | null;
+  footer?: {
+    /**
+     * Leave empty to use the website name.
+     */
+    title?: string | null;
+    description?: string | null;
+    apartmentsHeading?: string | null;
+    linksHeading?: string | null;
+    links?:
+      | {
+          link: {
+            label: string;
+            kind: 'internal' | 'url' | 'email' | 'phone' | 'anchor';
+            reference?:
+              | ({
+                  relationTo: 'pages';
+                  value: number | Page;
+                } | null)
+              | ({
+                  relationTo: 'accommodations';
+                  value: number | Accommodation;
+                } | null);
+            url?: string | null;
+            email?: string | null;
+            phone?: string | null;
+            anchor?: string | null;
+            newTab?: boolean | null;
+          };
+          id?: string | null;
+        }[]
+      | null;
+    contactHeading?: string | null;
+    /**
+     * The current year and © are added automatically.
+     */
+    copyrightText?: string | null;
+  };
   operatorName?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
@@ -985,6 +1022,33 @@ export interface SiteSettingsSelect<T extends boolean = true> {
               newTab?: T;
             };
         id?: T;
+      };
+  footer?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        apartmentsHeading?: T;
+        linksHeading?: T;
+        links?:
+          | T
+          | {
+              link?:
+                | T
+                | {
+                    label?: T;
+                    kind?: T;
+                    reference?: T;
+                    url?: T;
+                    email?: T;
+                    phone?: T;
+                    anchor?: T;
+                    newTab?: T;
+                  };
+              id?: T;
+            };
+        contactHeading?: T;
+        copyrightText?: T;
       };
   operatorName?: T;
   contactEmail?: T;
