@@ -79,7 +79,7 @@ export function PageBlocks({ page, locale, accommodations }: { page: Page; local
     if (block.blockType === 'cta') return <section key={key} className="site-cta site-section">
       <div className="site-container site-cta__inner">
         <SectionIntro block={block} />
-        <ActionLink value={block.action} locale={locale} variant="outline" />
+        <ActionLink value={block.action} locale={locale} />
       </div>
     </section>
 

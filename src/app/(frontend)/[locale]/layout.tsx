@@ -1,4 +1,4 @@
-import { Fraunces, Sora } from 'next/font/google'
+import { Figtree, Lora } from 'next/font/google'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -9,8 +9,8 @@ import { getPublicAccommodations, getPublicSettings } from '@/lib/public-content
 
 import '../styles.css'
 
-const heading = Fraunces({ subsets: ['latin'], variable: '--font-fraunces', display: 'swap' })
-const body = Sora({ subsets: ['latin'], variable: '--font-sora', display: 'swap' })
+const heading = Lora({ subsets: ['latin'], variable: '--font-lora', display: 'swap' })
+const body = Figtree({ subsets: ['latin'], variable: '--font-figtree', display: 'swap' })
 
 export default async function LocaleLayout({ children, params }: { children: React.ReactNode; params: Promise<{ locale: string }> }) {
   const { locale } = await params
