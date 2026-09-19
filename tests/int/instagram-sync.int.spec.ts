@@ -214,7 +214,7 @@ describe('Instagram sync', () => {
     }))
   })
 
-  it('does not replace an editorial image attached to an imported post', async () => {
+  it('does not replace an imported image that belongs to another post', async () => {
     process.env.BRIGHTDATA_API_KEY = 'test-key'
     process.env.INSTAGRAM_PROFILE_URL = 'https://www.instagram.com/example/'
     const update = vi.fn()
@@ -226,7 +226,7 @@ describe('Instagram sync', () => {
       })),
       updateGlobal: vi.fn(),
       find: vi.fn(async () => ({ docs: [{ id: 8, image: 13, sourceProfile: 'https://www.instagram.com/example/' }] })),
-      findByID: vi.fn(async () => ({ id: 13, filename: 'editorial-image.jpg', width: 1, height: 1 })),
+      findByID: vi.fn(async () => ({ id: 13, filename: 'instagram-another-post.jpg', width: 1, height: 1 })),
       create: vi.fn(),
       update,
       logger: { warn: vi.fn() },

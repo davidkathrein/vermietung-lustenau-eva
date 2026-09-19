@@ -4,7 +4,7 @@ import { getPayload } from 'payload'
 
 import config from '../../src/payload.config'
 import { GET, POST } from '../../src/app/api/admin-translate/route'
-import { translateFieldBatches, translateFields } from '../../src/lib/translation'
+import { translateFields, translatePageFields } from '../../src/lib/translation'
 import { buildReviewCandidates, missingTranslationFields, reviewFields, sourceIsComplete, translationUnits } from '../../src/lib/translation-review'
 
 const originalKey = process.env.OPENROUTER_API_KEY
@@ -139,19 +139,14 @@ describe('admin translation', () => {
     expect(body.response_format.json_schema.strict).toBe(true)
   })
 
-  it('starts all translation batches without waiting for earlier batches to finish', async () => {
-    const resolvers: Array<() => void> = []
-    const translate = vi.fn((fields: Parameters<typeof translateFields>[0]) => new Promise<typeof fields>((resolve) => {
-      resolvers.push(() => resolve(fields))
-    }))
+  it('sends the fields of a whole page in one translation request', async () => {
+    const translate = vi.fn(async (fields: Parameters<typeof translateFields>[0]) => fields)
     const fields = Array.from({ length: 51 }, (_, index) => ({ path: `field.${index}`, text: `Text ${index}` }))
 
-    const pending = translateFieldBatches(fields, 'de', 'en', translate)
-    await Promise.resolve()
+    await expect(translatePageFields(fields, 'de', 'en', translate)).resolves.toEqual(fields)
 
-    expect(translate).toHaveBeenCalledTimes(2)
-    for (const resolve of resolvers) resolve()
-    await expect(pending).resolves.toEqual(fields)
+    expect(translate).toHaveBeenCalledOnce()
+    expect(translate).toHaveBeenCalledWith(fields, 'de', 'en')
   })
 
   it('reads the saved source locale for an authenticated editor without saving the result', async () => {

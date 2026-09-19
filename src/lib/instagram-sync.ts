@@ -219,7 +219,6 @@ function importedInstagramFilenames(externalId: string): string[] {
 
 function isImportedInstagramImage(filename: unknown, externalId: string): boolean {
   return importedInstagramFilenames(externalId).includes(String(filename))
-    || /^instagram-[a-zA-Z0-9_-]+\.(?:jpg|png|webp)$/.test(String(filename))
 }
 
 async function findImportedImage(payload: Payload, post: ImportedPost): Promise<number | undefined> {

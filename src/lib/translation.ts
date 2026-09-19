@@ -2,6 +2,8 @@ import type { ContentLocale, TranslationField } from './translation-fields'
 
 const defaultModel = 'google/gemini-3.1-flash-lite'
 const fallbackModel = 'google/gemini-2.5-flash'
+export const maxTranslationFields = 250
+export const maxTranslationCharacters = 50_000
 
 export async function translateFields(
   fields: TranslationField[],
@@ -10,7 +12,11 @@ export async function translateFields(
 ): Promise<TranslationField[]> {
   const key = process.env.OPENROUTER_API_KEY
   if (!key) throw new Error('OPENROUTER_API_KEY is not configured')
-  if (fields.length === 0 || fields.length > 50 || fields.reduce((sum, field) => sum + field.text.length, 0) > 20_000) {
+  if (
+    fields.length === 0 ||
+    fields.length > maxTranslationFields ||
+    fields.reduce((sum, field) => sum + field.text.length, 0) > maxTranslationCharacters
+  ) {
     throw new Error('Invalid translation size')
   }
 
@@ -65,12 +71,11 @@ export async function translateFields(
   })
 }
 
-export async function translateFieldBatches(
+export async function translatePageFields(
   fields: TranslationField[],
   sourceLocale: ContentLocale,
   targetLocale: ContentLocale,
   translate: typeof translateFields = translateFields,
 ): Promise<TranslationField[]> {
-  const batches = Array.from({ length: Math.ceil(fields.length / 50) }, (_, index) => fields.slice(index * 50, (index + 1) * 50))
-  return (await Promise.all(batches.map((batch) => translate(batch, sourceLocale, targetLocale)))).flat()
+  return translate(fields, sourceLocale, targetLocale)
 }
