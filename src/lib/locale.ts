@@ -1,4 +1,5 @@
 export type SiteLocale = 'de' | 'en'
+export type LocalizedRoute = Record<SiteLocale, string>
 
 export function isSiteLocale(value: string): value is SiteLocale {
   return value === 'de' || value === 'en'

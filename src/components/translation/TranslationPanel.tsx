@@ -5,10 +5,13 @@ import { useDocumentInfo, useForm, useFormModified, useLocale, useRouteTransitio
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import type { TranslationEntity } from '@/lib/translation-fields'
 import type { ReviewCandidate } from '@/lib/translation-review'
 
 import './translation-panel.scss'
+
+type ReviewChoice = 'previous' | 'candidate'
 
 function fieldAt(document: unknown, path: string): unknown {
   return path.split('.').reduce<unknown>((value, key) => value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined, document)
@@ -69,6 +72,7 @@ export default function TranslationPanel() {
   const [available, setAvailable] = useState(false)
   const [missingFields, setMissingFields] = useState<string[]>([])
   const [candidates, setCandidates] = useState<ReviewCandidate[]>([])
+  const [choices, setChoices] = useState<Record<string, ReviewChoice>>({})
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const current = locale.code === 'en' ? 'en' : 'de'
@@ -96,6 +100,7 @@ export default function TranslationPanel() {
     setError('')
     setMessage('')
     setCandidates([])
+    setChoices({})
     setAvailable(false)
     setMissingFields([])
     const params = new URLSearchParams(window.location.search)
@@ -116,31 +121,45 @@ export default function TranslationPanel() {
       const result = await response.json() as { error?: string; fields?: ReviewCandidate[] }
       if (!response.ok || !Array.isArray(result.fields)) throw new Error(result.error || 'Translation failed')
       setCandidates(result.fields)
-      setMessage(isGermanUI ? 'KI-Vorschläge bereit. Bitte jedes Feld prüfen oder alles übernehmen.' : 'AI suggestions are ready. Review each field or accept all.')
+      setChoices({})
+      setMessage(isGermanUI ? 'KI-Vorschläge bereit. Wähle pro Feld einen Wert oder übernimm den Rest.' : 'AI suggestions are ready. Choose a value for each field or accept the remaining suggestions.')
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Translation failed') }
     finally { setLoading(false) }
   }
 
   function accept(field: ReviewCandidate) {
-    dispatchFields({ type: 'UPDATE', path: field.path, value: field.candidate })
-    setModified(true)
+    const choice = choices[field.path]
+    if (!choice) return
+    if (choice === 'candidate') {
+      dispatchFields({ type: 'UPDATE', path: field.path, value: field.candidate })
+      setModified(true)
+    }
     setCandidates((currentCandidates) => currentCandidates.filter((candidate) => candidate.path !== field.path))
+    setChoices((currentChoices) => {
+      const nextChoices = { ...currentChoices }
+      delete nextChoices[field.path]
+      return nextChoices
+    })
+    setMessage(choice === 'candidate'
+      ? (isGermanUI ? 'KI-Vorschlag ins Formular übernommen.' : 'AI suggestion applied to the form.')
+      : (isGermanUI ? 'Bisherigen Wert beibehalten.' : 'Previous value kept.'))
   }
 
   function acceptAll() {
     for (const field of candidates) dispatchFields({ type: 'UPDATE', path: field.path, value: field.candidate })
     setModified(true)
     setCandidates([])
-    setMessage(isGermanUI ? 'Vorschläge übernommen. Bitte prüfen und speichern.' : 'Suggestions accepted. Review and save.')
+    setChoices({})
+    setMessage(isGermanUI ? 'Restliche KI-Vorschläge übernommen. Bitte prüfen und speichern.' : 'Remaining AI suggestions accepted. Review and save.')
   }
 
   const sourceLabel = source === 'de' ? 'Deutsch' : 'English'
   return <section className="translation-panel" aria-label={isGermanUI ? 'Inhaltssprache' : 'Content language'}>
     <div className="translation-panel__tabs" role="tablist" aria-label={isGermanUI ? 'Inhaltssprache' : 'Content language'}>
-      {(['de', 'en'] as const).map((code) => <button key={code} type="button" role="tab" aria-selected={code === current} disabled={modified || loading} onClick={() => switchLocale(code)}>{code === 'de' ? 'Deutsch' : 'English'}</button>)}
+      {(['de', 'en'] as const).map((code) => <Button key={code} type="button" role="tab" aria-selected={code === current} disabled={modified || loading} onClick={() => switchLocale(code)}>{code === 'de' ? 'Deutsch' : 'English'}</Button>)}
     </div>
     <div className="translation-panel__actions">
-      {available && <button type="button" onClick={() => void translate()} disabled={modified || loading || !canLoad}>{loading ? (isGermanUI ? 'Übersetze …' : 'Translating…') : (isGermanUI ? `Mit KI aus ${sourceLabel} übersetzen` : `Translate from ${sourceLabel} with AI`)}</button>}
+      {available && <Button type="button" onClick={() => void translate()} disabled={modified || loading || !canLoad}>{loading ? (isGermanUI ? 'Übersetze …' : 'Translating…') : (isGermanUI ? `Mit KI aus ${sourceLabel} übersetzen` : `Translate from ${sourceLabel} with AI`)}</Button>}
       {!modified && canLoad && !available && missingFields.length > 0 ? <div className="translation-panel__missing">
         <p>{isGermanUI ? `Für die Übersetzung fehlen auf ${sourceLabel} noch:` : `Still missing for translation from ${sourceLabel}:`}</p>
         <ul>{missingFields.slice(0, 3).map((path) => <li key={path}>{missingFieldName(path, isGermanUI)}</li>)}</ul>
@@ -149,6 +168,6 @@ export default function TranslationPanel() {
     </div>
     {message && <p role="status" className="translation-panel__success">{message}</p>}
     {error && <p role="alert" className="translation-panel__error">{error}</p>}
-    {candidates.length > 0 && <div className="translation-panel__review"><div className="translation-panel__review-header"><h3>{isGermanUI ? 'Übersetzung prüfen' : 'Review translation'}</h3><button type="button" onClick={acceptAll}>{isGermanUI ? 'Alles übernehmen' : 'Accept all'}</button></div>{candidates.map((field) => <article className="translation-panel__field" key={field.path}><h4>{fieldName(field.path)}</h4><div className="translation-panel__comparison"><div><strong>{isGermanUI ? 'Quelle' : 'Source'}</strong><FieldPreview value={field.source} kind={field.kind} /></div><div><strong>{isGermanUI ? 'Vorher' : 'Before'}</strong><FieldPreview value={fieldAt(getData(), field.path)} kind={field.kind} /></div><div><strong>{isGermanUI ? 'KI-Vorschlag' : 'AI suggestion'}</strong><FieldPreview value={field.candidate} kind={field.kind} /></div></div><button type="button" onClick={() => accept(field)}>{isGermanUI ? 'Dieses Feld übernehmen' : 'Accept this field'}</button></article>)}</div>}
+    {candidates.length > 0 && <div className="translation-panel__review"><div className="translation-panel__review-header"><div><h3>{isGermanUI ? 'Übersetzung prüfen' : 'Review translation'}</h3><p>{isGermanUI ? 'Klicke auf den Wert, den du behalten möchtest.' : 'Select the value you want to keep.'}</p></div><Button type="button" onClick={acceptAll}>{isGermanUI ? 'Rest übernehmen' : 'Accept remaining'}</Button></div>{candidates.map((field) => <article className="translation-panel__field" key={field.path}><h4>{fieldName(field.path)}</h4><div className="translation-panel__comparison"><div className="translation-panel__source"><strong>{isGermanUI ? 'Quelle' : 'Source'}</strong><FieldPreview value={field.source} kind={field.kind} /></div><div className="translation-panel__choice" onClick={() => setChoices((currentChoices) => ({ ...currentChoices, [field.path]: 'previous' }))}><input type="radio" name={`translation-${field.path}`} aria-label={isGermanUI ? 'Vorher' : 'Before'} checked={choices[field.path] === 'previous'} onChange={() => setChoices((currentChoices) => ({ ...currentChoices, [field.path]: 'previous' }))} /><div><strong>{isGermanUI ? 'Vorher' : 'Before'}</strong><FieldPreview value={fieldAt(getData(), field.path)} kind={field.kind} /></div></div><div className="translation-panel__choice" onClick={() => setChoices((currentChoices) => ({ ...currentChoices, [field.path]: 'candidate' }))}><input type="radio" name={`translation-${field.path}`} aria-label={isGermanUI ? 'KI-Vorschlag' : 'AI suggestion'} checked={choices[field.path] === 'candidate'} onChange={() => setChoices((currentChoices) => ({ ...currentChoices, [field.path]: 'candidate' }))} /><div><strong>{isGermanUI ? 'KI-Vorschlag' : 'AI suggestion'}</strong><FieldPreview value={field.candidate} kind={field.kind} /></div></div></div><Button type="button" disabled={!choices[field.path]} onClick={() => accept(field)}>{isGermanUI ? 'Auswahl übernehmen' : 'Apply selection'}</Button></article>)}</div>}
   </section>
 }

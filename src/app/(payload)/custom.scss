@@ -1,0 +1,33 @@
+.instagram-sync-control {
+  padding-block: calc(var(--base) * 0.75) calc(var(--base) * 1.25);
+
+  &__content,
+  &__status {
+    display: grid;
+  }
+
+  &__content {
+    gap: calc(var(--base) * 0.5);
+  }
+
+  &__button {
+    justify-self: start;
+  }
+
+  &__status {
+    gap: calc(var(--base) * 0.25);
+    max-width: 75ch;
+
+    &:empty {
+      display: none;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    [role='alert'] {
+      color: var(--theme-error-800);
+    }
+  }
+}

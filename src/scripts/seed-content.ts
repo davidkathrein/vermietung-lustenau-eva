@@ -9,6 +9,7 @@ import config from '../payload.config'
 
 const payload = await getPayload({ config })
 type Layout = Page['layout']
+type InstagramFeedBlock = Extract<Layout[number], { blockType: 'instagramFeed' }>
 const newlyCreatedPages = new Set<number>()
 const rich = (value: string) => ({ root: { type: 'root', version: 1, format: '', indent: 0, direction: 'ltr', children: [{ type: 'paragraph', version: 1, format: '', indent: 0, direction: 'ltr', children: [{ type: 'text', version: 1, format: 0, mode: 'normal', style: '', detail: 0, text: value }] }] } })
 
@@ -75,6 +76,38 @@ async function addMissingPageImages(id: number, imagesByIndex: Record<number, nu
     }
   }
 }
+
+async function removePageBlock(id: number, blockType: Layout[number]['blockType']) {
+  const pages = await Promise.all((['de', 'en'] as const).map(async (locale) => ({
+    locale,
+    page: await payload.findByID({ collection: 'pages', id, locale, fallbackLocale: false, depth: 0 }),
+  })))
+
+  for (const { locale, page } of pages) {
+    const layout = page.layout.filter((block) => block.blockType !== blockType)
+    if (layout.length === page.layout.length) continue
+    await payload.update({ collection: 'pages', id, locale, data: { layout, _status: 'published' } })
+  }
+}
+
+async function addInstagramBlock(id: number, de: InstagramFeedBlock, en: InstagramFeedBlock) {
+  const german = await payload.findByID({ collection: 'pages', id, locale: 'de', fallbackLocale: false, draft: true, depth: 0 })
+  if (german.layout.some((block) => block.blockType === 'instagramFeed')) return
+
+  const germanDraft = await payload.update({
+    collection: 'pages', id, locale: 'de', draft: true,
+    data: { layout: [...german.layout, de], _status: 'draft' },
+  })
+  const added = germanDraft.layout.find((block) => block.blockType === 'instagramFeed')
+  if (!added) throw new Error('Instagram block could not be added to the German homepage')
+
+  const english = await payload.findByID({ collection: 'pages', id, locale: 'en', fallbackLocale: false, draft: true, depth: 0 })
+  const englishLayout = english.layout.map((block) => block.id === added.id ? { ...block, ...en, id: added.id } : block) as Layout
+  await payload.update({ collection: 'pages', id, locale: 'en', draft: true, data: { layout: englishLayout, _status: 'draft' } })
+  await payload.update({ collection: 'pages', id, locale: 'de', data: { _status: 'published' } })
+  await payload.update({ collection: 'pages', id, locale: 'en', data: { _status: 'published' } })
+}
+
 function withIds(layout: Layout, reference: Layout): Layout {
   return layout.map((block, index) => {
     const saved = reference[index] as Record<string, unknown> | undefined
@@ -158,16 +191,16 @@ const apartments = await page('apartments', {
 const contact = await page('contact', {
   slug: 'kontakt', title: 'Kontakt und Anfrage', description: 'Fragen Sie eine Wohnung oder den Seminarraum in Lustenau unverbindlich an.',
   layout: [
-    { blockType: 'hero', eyebrow: 'Persönlich erreichbar', headline: 'Wir freuen uns auf Ihre Nachricht.', intro: 'Ob Kurzurlaub, Arbeitsaufenthalt oder Seminartag: Senden Sie uns Ihren Wunschzeitraum.' },
     { blockType: 'inquiry', eyebrow: 'Unverbindlich', headline: 'Ihre Anfrage', intro: 'Eine Anfrage ist noch keine Buchung. Wir melden uns mit einer persönlichen Rückmeldung.', mode: 'both' },
   ] as Layout,
 }, {
   slug: 'contact', title: 'Contact and inquiry', description: 'Send a no-obligation inquiry for an apartment or the seminar room in Lustenau.',
   layout: [
-    { blockType: 'hero', eyebrow: 'Here to help', headline: 'We would love to hear from you.', intro: 'A short break, a work stay or a seminar day: tell us when you would like to come.' },
     { blockType: 'inquiry', eyebrow: 'No obligation', headline: 'Your inquiry', intro: 'An inquiry is not yet a booking. We will reply personally.', mode: 'both' },
   ] as Layout,
 })
+
+await removePageBlock(contact.id, 'hero')
 
 const internal = (label: string, id: number) => ({ label, kind: 'internal' as const, reference: { relationTo: 'pages' as const, value: id } })
 const homepage = await page('homepage', {
@@ -181,6 +214,7 @@ const homepage = await page('homepage', {
       { question: 'Ist meine Anfrage bereits eine Buchung?', answer: rich('Nein. Wir prüfen Ihren Wunschtermin und melden uns persönlich mit einer Rückmeldung.') },
       { question: 'Kann Wohnung 1 gleichzeitig als Seminarraum und Wohnung genutzt werden?', answer: rich('Nein. Es ist derselbe Raum. Ein bestätigter Termin blockiert beide Nutzungen.') },
     ] },
+    { blockType: 'instagramFeed', headline: 'Aktuelles vom Verein.', intro: 'Bilder und Reels von starkgemachtverein auf Instagram.' },
   ] as Layout,
 }, {
   slug: 'homepage', title: 'Stay in Lustenau', description: 'Three personally managed apartments in Lustenau for stays in the Rhine Valley and seminars in Apartment 1.',
@@ -193,11 +227,17 @@ const homepage = await page('homepage', {
       { question: 'Is my inquiry already a booking?', answer: rich('No. We check your preferred dates and respond personally.') },
       { question: 'Can Apartment 1 be used for a stay and a seminar at the same time?', answer: rich('No. It is the same physical space. A confirmed booking blocks both uses.') },
     ] },
+    { blockType: 'instagramFeed', headline: 'Latest from the association.', intro: 'Photos and reels from starkgemachtverein on Instagram.' },
   ] as Layout,
 })
 
+await addInstagramBlock(
+  homepage.id,
+  { blockType: 'instagramFeed', headline: 'Aktuelles vom Verein.', intro: 'Bilder und Reels von starkgemachtverein auf Instagram.' },
+  { blockType: 'instagramFeed', headline: 'Latest from the association.', intro: 'Photos and reels from starkgemachtverein on Instagram.' },
+)
+
 await addMissingPageImages(apartments.id, { 0: photos.hero })
-await addMissingPageImages(contact.id, { 0: photos.hero })
 await addMissingPageImages(homepage.id, { 0: photos.hero, 1: photos.apartments[2][0] })
 
 const latest = await payload.findGlobal({ slug: 'site-settings', locale: 'de', depth: 0 })

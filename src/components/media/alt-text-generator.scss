@@ -1,0 +1,22 @@
+.alt-text-generator {
+  margin: 1rem 0 1.75rem;
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: var(--border-radius-m);
+  padding: 1rem;
+  background: var(--theme-elevation-50);
+}
+
+.alt-text-generator__heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.alt-text-generator p { margin: .35rem 0 0; color: var(--theme-elevation-700); }
+.alt-text-generator__heading > div { flex: 1 1 24rem; }
+.alt-text-generator__candidate { margin-top: 1rem; border-top: 1px solid var(--theme-elevation-250); padding-top: 1rem; }
+.alt-text-generator__candidate > div { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem; }
+.alt-text-generator__success { color: var(--theme-success-700) !important; }
+.alt-text-generator__error { color: var(--theme-error-600) !important; }

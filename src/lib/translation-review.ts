@@ -71,7 +71,7 @@ export function missingTranslationFields(entity: TranslationEntity, document: Re
   } else if (entity === 'instagram-posts') {
     requireText('caption')
   } else if (entity === 'media') {
-    requireText('alt')
+    if (document.decorative !== true) requireText('alt')
   } else {
     requireText('siteName')
     if (Array.isArray(document.navigation)) document.navigation.forEach((row, index) => {

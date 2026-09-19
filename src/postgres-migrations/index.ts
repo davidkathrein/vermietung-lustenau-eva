@@ -5,6 +5,9 @@ import * as migration_20260918_183302_instagram_posts from './20260918_183302_in
 import * as migration_20260918_190143_footer_settings from './20260918_190143_footer_settings';
 import * as migration_20260918_190325_instagram_sync_status from './20260918_190325_instagram_sync_status';
 import * as migration_20260918_201700_instagram_source_profile from './20260918_201700_instagram_source_profile';
+import * as migration_20260919_110206_instagram_block from './20260919_110206_instagram_block';
+import * as migration_20260919_144445_media_alt_text from './20260919_144445_media_alt_text';
+import * as migration_20260919_161104_optional_decorative_alt from './20260919_161104_optional_decorative_alt';
 
 export const migrations = [
   {
@@ -35,11 +38,26 @@ export const migrations = [
   {
     up: migration_20260918_190325_instagram_sync_status.up,
     down: migration_20260918_190325_instagram_sync_status.down,
-    name: '20260918_190325_instagram_sync_status'
+    name: '20260918_190325_instagram_sync_status',
   },
   {
     up: migration_20260918_201700_instagram_source_profile.up,
     down: migration_20260918_201700_instagram_source_profile.down,
     name: '20260918_201700_instagram_source_profile',
+  },
+  {
+    up: migration_20260919_110206_instagram_block.up,
+    down: migration_20260919_110206_instagram_block.down,
+    name: '20260919_110206_instagram_block',
+  },
+  {
+    up: migration_20260919_144445_media_alt_text.up,
+    down: migration_20260919_144445_media_alt_text.down,
+    name: '20260919_144445_media_alt_text',
+  },
+  {
+    up: migration_20260919_161104_optional_decorative_alt.up,
+    down: migration_20260919_161104_optional_decorative_alt.down,
+    name: '20260919_161104_optional_decorative_alt'
   },
 ];

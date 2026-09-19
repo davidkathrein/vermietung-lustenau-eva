@@ -1,12 +1,16 @@
 import { Figtree, Lora } from 'next/font/google'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
 
+import { LanguageSwitcher, LanguageSwitcherFallback } from '@/components/site/LanguageSwitcher'
+import { MobileNavigation } from '@/components/site/MobileNavigation'
+import { ScrollAwareHeader } from '@/components/site/ScrollAwareHeader'
+import { ButtonLink } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { buttonVariants } from '@/components/ui/button'
 import { hrefForLink } from '@/lib/href'
 import { accommodationPath, isSiteLocale, pagePath } from '@/lib/locale'
-import { getPublicAccommodations, getPublicContactPage, getPublicSettings } from '@/lib/public-content'
+import { getPublicAccommodations, getPublicContactPage, getPublicLocalizedRoutes, getPublicSettings } from '@/lib/public-content'
 
 import '../styles.css'
 
@@ -16,7 +20,7 @@ const body = Figtree({ subsets: ['latin'], variable: '--font-figtree', display: 
 export default async function LocaleLayout({ children, params }: { children: React.ReactNode; params: Promise<{ locale: string }> }) {
   const { locale } = await params
   if (!isSiteLocale(locale)) notFound()
-  const [settings, accommodations, contactPage] = await Promise.all([getPublicSettings(locale), getPublicAccommodations(locale), getPublicContactPage(locale)])
+  const [settings, accommodations, contactPage, localizedRoutes] = await Promise.all([getPublicSettings(locale), getPublicAccommodations(locale), getPublicContactPage(locale), getPublicLocalizedRoutes()])
   const siteName = settings.siteName || 'Wohnen in Lustenau'
   const footer = settings.footer
   const footerLinks = footer?.links?.flatMap((row) => {
@@ -24,29 +28,39 @@ export default async function LocaleLayout({ children, params }: { children: Rea
     return href && row.link?.label ? [{ id: row.id, href, label: row.link.label, newTab: row.link.newTab }] : []
   }) || []
   const footerColumnCount = 2 + Number(footerLinks.length > 0) + Number(Boolean(settings.contactEmail || settings.contactPhone))
+  const navigationLinks = settings.navigation?.flatMap((row) => {
+    const href = hrefForLink(row.link, locale)
+    return href && row.link?.label ? [{ id: row.id, href, label: row.link.label, newTab: row.link.newTab }] : []
+  }) || []
+  const inquiryHref = contactPage ? `${pagePath(locale, contactPage.internalName, contactPage.slug)}#anfrage` : null
 
   return (
     <html lang={locale} className={`${heading.variable} ${body.variable}`}>
       <body>
         <div className="flex min-h-svh flex-col">
-          <header className="site-header">
+          <ScrollAwareHeader>
             <div className="site-container site-header__inner">
               <Link href={`/${locale}`} className="site-brand"><span>{siteName}</span><small>Lustenau · Vorarlberg</small></Link>
               <nav aria-label={locale === 'de' ? 'Hauptnavigation' : 'Main navigation'} className="site-nav">
-                {settings.navigation?.map((row) => {
-                  const href = hrefForLink(row.link, locale)
-                  if (!href || !row.link?.label) return null
-                  return <Link key={row.id} href={href} className="site-nav__link" target={row.link.newTab ? '_blank' : undefined} rel={row.link.newTab ? 'noopener noreferrer' : undefined}>{row.link.label}</Link>
-                })}
+                {navigationLinks.map((link) => <Link key={link.id} href={link.href} className="site-nav__link" target={link.newTab ? '_blank' : undefined} rel={link.newTab ? 'noopener noreferrer' : undefined}>{link.label}</Link>)}
               </nav>
-              <nav className="site-language" aria-label={locale === 'de' ? 'Sprache wählen' : 'Choose language'}>
-                {locale === 'de' ? <span className="site-language__current" aria-current="page">DE</span> : <Link href="/de" hrefLang="de" aria-label="Zu Deutsch wechseln">DE</Link>}
-                <span aria-hidden="true">/</span>
-                {locale === 'en' ? <span className="site-language__current" aria-current="page">EN</span> : <Link href="/en" hrefLang="en" aria-label="Switch to English">EN</Link>}
-              </nav>
-              {contactPage && <Link href={`${pagePath(locale, contactPage.internalName, contactPage.slug)}#anfrage`} className={buttonVariants({ size: 'sm', className: 'site-booking-cta' })} aria-label={locale === 'de' ? 'Buchung anfragen' : 'Request booking'}><span className="site-booking-cta__full">{locale === 'de' ? 'Buchung anfragen' : 'Request booking'}</span><span className="site-booking-cta__short" aria-hidden="true">{locale === 'de' ? 'Anfragen' : 'Inquire'}</span></Link>}
+              <Suspense fallback={<LanguageSwitcherFallback locale={locale} />}>
+                <LanguageSwitcher locale={locale} routes={localizedRoutes} />
+              </Suspense>
+              {inquiryHref && <ButtonLink href={inquiryHref} size="sm" className="site-booking-cta" aria-label={locale === 'de' ? 'Buchung anfragen' : 'Request booking'}>{locale === 'de' ? 'Buchung anfragen' : 'Request booking'}</ButtonLink>}
+              <MobileNavigation openLabel={locale === 'de' ? 'Menü öffnen' : 'Open menu'} closeLabel={locale === 'de' ? 'Menü schließen' : 'Close menu'}>
+                <nav aria-label={locale === 'de' ? 'Mobile Hauptnavigation' : 'Mobile main navigation'} className="site-mobile-menu__nav">
+                  {navigationLinks.map((link) => <Link key={link.id} href={link.href} target={link.newTab ? '_blank' : undefined} rel={link.newTab ? 'noopener noreferrer' : undefined}>{link.label}</Link>)}
+                </nav>
+                <div className="site-mobile-menu__footer">
+                  <Suspense fallback={<LanguageSwitcherFallback locale={locale} />}>
+                    <LanguageSwitcher locale={locale} routes={localizedRoutes} />
+                  </Suspense>
+                  {inquiryHref && <ButtonLink href={inquiryHref} size="lg" className="site-mobile-menu__cta">{locale === 'de' ? 'Buchung anfragen' : 'Request booking'}</ButtonLink>}
+                </div>
+              </MobileNavigation>
             </div>
-          </header>
+          </ScrollAwareHeader>
           <div className="flex-1">{children}</div>
           <footer className="site-footer">
             <div className="site-container">

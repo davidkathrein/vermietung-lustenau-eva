@@ -4,15 +4,18 @@ import { getPayload } from 'payload'
 
 import config from '../../src/payload.config'
 import { GET, POST } from '../../src/app/api/admin-translate/route'
-import { translateFields } from '../../src/lib/translation'
+import { translateFields, translatePageFields } from '../../src/lib/translation'
 import { buildReviewCandidates, missingTranslationFields, reviewFields, sourceIsComplete, translationUnits } from '../../src/lib/translation-review'
 
 const originalKey = process.env.OPENROUTER_API_KEY
+const originalModel = process.env.OPENROUTER_MODEL
 
 afterEach(() => {
   vi.restoreAllMocks()
   if (originalKey === undefined) delete process.env.OPENROUTER_API_KEY
   else process.env.OPENROUTER_API_KEY = originalKey
+  if (originalModel === undefined) delete process.env.OPENROUTER_MODEL
+  else process.env.OPENROUTER_MODEL = originalModel
 })
 
 describe('admin translation', () => {
@@ -94,6 +97,7 @@ describe('admin translation', () => {
       ])
     expect(reviewFields('media', { alt: 'Hausfront', caption: 'Abendlicht', filename: 'photo.jpg' }))
       .toEqual([{ path: 'alt', kind: 'text', value: 'Hausfront' }, { path: 'caption', kind: 'text', value: 'Abendlicht' }])
+    expect(missingTranslationFields('media', { alt: '', decorative: true })).toEqual([])
     expect(reviewFields('instagram-posts', { caption: 'Ein Blick in die Wohnung', permalink: 'https://www.instagram.com/p/example/' }))
       .toEqual([{ path: 'caption', kind: 'text', value: 'Ein Blick in die Wohnung' }])
   })
@@ -129,7 +133,20 @@ describe('admin translation', () => {
     ])
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe('https://openrouter.ai/api/v1/chat/completions')
-    expect(JSON.parse(String(init?.body)).response_format.json_schema.strict).toBe(true)
+    const body = JSON.parse(String(init?.body))
+    expect(body.model).toBe('google/gemini-3.1-flash-lite')
+    expect(body.models).toEqual(['google/gemini-2.5-flash'])
+    expect(body.response_format.json_schema.strict).toBe(true)
+  })
+
+  it('sends the fields of a whole page in one translation request', async () => {
+    const translate = vi.fn(async (fields: Parameters<typeof translateFields>[0]) => fields)
+    const fields = Array.from({ length: 51 }, (_, index) => ({ path: `field.${index}`, text: `Text ${index}` }))
+
+    await expect(translatePageFields(fields, 'de', 'en', translate)).resolves.toEqual(fields)
+
+    expect(translate).toHaveBeenCalledOnce()
+    expect(translate).toHaveBeenCalledWith(fields, 'de', 'en')
   })
 
   it('reads the saved source locale for an authenticated editor without saving the result', async () => {
