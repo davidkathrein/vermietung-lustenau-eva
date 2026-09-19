@@ -9,6 +9,7 @@ import config from '../payload.config'
 
 const payload = await getPayload({ config })
 type Layout = Page['layout']
+type InstagramFeedBlock = Extract<Layout[number], { blockType: 'instagramFeed' }>
 const newlyCreatedPages = new Set<number>()
 const rich = (value: string) => ({ root: { type: 'root', version: 1, format: '', indent: 0, direction: 'ltr', children: [{ type: 'paragraph', version: 1, format: '', indent: 0, direction: 'ltr', children: [{ type: 'text', version: 1, format: 0, mode: 'normal', style: '', detail: 0, text: value }] }] } })
 
@@ -87,6 +88,24 @@ async function removePageBlock(id: number, blockType: Layout[number]['blockType'
     if (layout.length === page.layout.length) continue
     await payload.update({ collection: 'pages', id, locale, data: { layout, _status: 'published' } })
   }
+}
+
+async function addInstagramBlock(id: number, de: InstagramFeedBlock, en: InstagramFeedBlock) {
+  const german = await payload.findByID({ collection: 'pages', id, locale: 'de', fallbackLocale: false, draft: true, depth: 0 })
+  if (german.layout.some((block) => block.blockType === 'instagramFeed')) return
+
+  const germanDraft = await payload.update({
+    collection: 'pages', id, locale: 'de', draft: true,
+    data: { layout: [...german.layout, de], _status: 'draft' },
+  })
+  const added = germanDraft.layout.find((block) => block.blockType === 'instagramFeed')
+  if (!added) throw new Error('Instagram block could not be added to the German homepage')
+
+  const english = await payload.findByID({ collection: 'pages', id, locale: 'en', fallbackLocale: false, draft: true, depth: 0 })
+  const englishLayout = english.layout.map((block) => block.id === added.id ? { ...block, ...en, id: added.id } : block) as Layout
+  await payload.update({ collection: 'pages', id, locale: 'en', draft: true, data: { layout: englishLayout, _status: 'draft' } })
+  await payload.update({ collection: 'pages', id, locale: 'de', data: { _status: 'published' } })
+  await payload.update({ collection: 'pages', id, locale: 'en', data: { _status: 'published' } })
 }
 
 function withIds(layout: Layout, reference: Layout): Layout {
@@ -195,6 +214,7 @@ const homepage = await page('homepage', {
       { question: 'Ist meine Anfrage bereits eine Buchung?', answer: rich('Nein. Wir prüfen Ihren Wunschtermin und melden uns persönlich mit einer Rückmeldung.') },
       { question: 'Kann Wohnung 1 gleichzeitig als Seminarraum und Wohnung genutzt werden?', answer: rich('Nein. Es ist derselbe Raum. Ein bestätigter Termin blockiert beide Nutzungen.') },
     ] },
+    { blockType: 'instagramFeed', headline: 'Aktuelles vom Verein.', intro: 'Bilder und Reels von starkgemachtverein auf Instagram.' },
   ] as Layout,
 }, {
   slug: 'homepage', title: 'Stay in Lustenau', description: 'Three personally managed apartments in Lustenau for stays in the Rhine Valley and seminars in Apartment 1.',
@@ -207,8 +227,15 @@ const homepage = await page('homepage', {
       { question: 'Is my inquiry already a booking?', answer: rich('No. We check your preferred dates and respond personally.') },
       { question: 'Can Apartment 1 be used for a stay and a seminar at the same time?', answer: rich('No. It is the same physical space. A confirmed booking blocks both uses.') },
     ] },
+    { blockType: 'instagramFeed', headline: 'Latest from the association.', intro: 'Photos and reels from starkgemachtverein on Instagram.' },
   ] as Layout,
 })
+
+await addInstagramBlock(
+  homepage.id,
+  { blockType: 'instagramFeed', headline: 'Aktuelles vom Verein.', intro: 'Bilder und Reels von starkgemachtverein auf Instagram.' },
+  { blockType: 'instagramFeed', headline: 'Latest from the association.', intro: 'Photos and reels from starkgemachtverein on Instagram.' },
+)
 
 await addMissingPageImages(apartments.id, { 0: photos.hero })
 await addMissingPageImages(homepage.id, { 0: photos.hero, 1: photos.apartments[2][0] })

@@ -89,7 +89,7 @@ export default async function ContentPage({ params }: Props) {
   const gallery = unit.gallery?.flatMap((row, index) => {
     const image = row.image
     if (!image || typeof image !== 'object' || !image.url) return []
-    return [{ id: String(row.id ?? `${image.id}-${index}`), src: image.url, alt: image.alt || unit.name, caption: image.caption }]
+    return [{ id: String(row.id ?? `${image.id}-${index}`), src: image.url, alt: image.decorative ? '' : (image.alt || unit.name), caption: image.caption }]
   }) ?? []
   return <main>
     <div className="site-room site-container">

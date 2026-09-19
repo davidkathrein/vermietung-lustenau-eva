@@ -63,18 +63,25 @@ export function PageBlocks({ page, locale, accommodations }: { page: Page; local
     if (block.blockType === 'accommodationOverview') return <section key={key} className="site-overview site-section">
       <div className="site-container">
         <SectionIntro block={block} />
-        <div className="site-stay-grid">{accommodations.map((unit, unitIndex) => <Card key={unit.id} className="site-stay-card">
-          {unit.gallery?.[0]?.image ? <MediaFigure media={unit.gallery[0].image} className="site-stay-card__media" /> : <div className="site-stay-card__fallback"><span>0{unitIndex + 1}</span></div>}
-          <CardHeader className="site-stay-card__header">
-            <p className="site-stay-card__index">{locale === 'de' ? 'Wohnung' : 'Apartment'} 0{unitIndex + 1}</p>
-            <CardTitle>{unit.name}</CardTitle>
-            <Badge variant="outline" className="site-stay-card__badge">{unit.sleeps} {locale === 'de' ? 'Personen' : 'guests'}</Badge>
-          </CardHeader>
-          <CardContent className="site-stay-card__content">
-            <p>{unit.teaser}</p>
-            <Link href={accommodationPath(locale, unit.slug)} className="site-card-link">{locale === 'de' ? 'Wohnung ansehen' : 'View apartment'}<ArrowUpRightIcon aria-hidden="true" /></Link>
-          </CardContent>
-        </Card>)}</div>
+        <div className="site-stay-grid">{accommodations.map((unit, unitIndex) => <Link
+          key={unit.id}
+          href={accommodationPath(locale, unit.slug)}
+          className="site-stay-card-link"
+          aria-label={`${unit.name} ${locale === 'de' ? 'ansehen' : 'view'}`}
+        >
+          <Card className="site-stay-card">
+            {unit.gallery?.[0]?.image ? <MediaFigure media={unit.gallery[0].image} className="site-stay-card__media" /> : <div className="site-stay-card__fallback"><span>0{unitIndex + 1}</span></div>}
+            <CardHeader className="site-stay-card__header">
+              <p className="site-stay-card__index">{locale === 'de' ? 'Wohnung' : 'Apartment'} 0{unitIndex + 1}</p>
+              <CardTitle>{unit.name}</CardTitle>
+              <Badge variant="outline" className="site-stay-card__badge">{unit.sleeps} {locale === 'de' ? 'Personen' : 'guests'}</Badge>
+            </CardHeader>
+            <CardContent className="site-stay-card__content">
+              <p>{unit.teaser}</p>
+              <span className="site-card-link">{locale === 'de' ? 'Wohnung ansehen' : 'View apartment'}<ArrowUpRightIcon aria-hidden="true" /></span>
+            </CardContent>
+          </Card>
+        </Link>)}</div>
       </div>
     </section>
 
@@ -95,6 +102,8 @@ export function PageBlocks({ page, locale, accommodations }: { page: Page; local
       </div>
     </section>
 
+    if (block.blockType === 'instagramFeed') return <InstagramFeed key={key} locale={locale} eyebrow={block.eyebrow} headline={block.headline} intro={block.intro} />
+
     if (block.blockType === 'inquiry') return <section key={key} id={index === firstInquiryIndex ? 'anfrage' : undefined} className="site-inquiry site-section">
       <div className="site-container">
         <SectionIntro block={block} />
@@ -103,5 +112,5 @@ export function PageBlocks({ page, locale, accommodations }: { page: Page; local
     </section>
 
     return null
-  })}{page.internalName === 'homepage' && <InstagramFeed locale={locale} />}</main>
+  })}</main>
 }

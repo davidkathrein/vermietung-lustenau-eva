@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
 import { LanguageSwitcher, LanguageSwitcherFallback } from '@/components/site/LanguageSwitcher'
+import { MobileNavigation } from '@/components/site/MobileNavigation'
 import { ScrollAwareHeader } from '@/components/site/ScrollAwareHeader'
 import { ButtonLink } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -27,6 +28,11 @@ export default async function LocaleLayout({ children, params }: { children: Rea
     return href && row.link?.label ? [{ id: row.id, href, label: row.link.label, newTab: row.link.newTab }] : []
   }) || []
   const footerColumnCount = 2 + Number(footerLinks.length > 0) + Number(Boolean(settings.contactEmail || settings.contactPhone))
+  const navigationLinks = settings.navigation?.flatMap((row) => {
+    const href = hrefForLink(row.link, locale)
+    return href && row.link?.label ? [{ id: row.id, href, label: row.link.label, newTab: row.link.newTab }] : []
+  }) || []
+  const inquiryHref = contactPage ? `${pagePath(locale, contactPage.internalName, contactPage.slug)}#anfrage` : null
 
   return (
     <html lang={locale} className={`${heading.variable} ${body.variable}`}>
@@ -36,16 +42,23 @@ export default async function LocaleLayout({ children, params }: { children: Rea
             <div className="site-container site-header__inner">
               <Link href={`/${locale}`} className="site-brand"><span>{siteName}</span><small>Lustenau · Vorarlberg</small></Link>
               <nav aria-label={locale === 'de' ? 'Hauptnavigation' : 'Main navigation'} className="site-nav">
-                {settings.navigation?.map((row) => {
-                  const href = hrefForLink(row.link, locale)
-                  if (!href || !row.link?.label) return null
-                  return <Link key={row.id} href={href} className="site-nav__link" target={row.link.newTab ? '_blank' : undefined} rel={row.link.newTab ? 'noopener noreferrer' : undefined}>{row.link.label}</Link>
-                })}
+                {navigationLinks.map((link) => <Link key={link.id} href={link.href} className="site-nav__link" target={link.newTab ? '_blank' : undefined} rel={link.newTab ? 'noopener noreferrer' : undefined}>{link.label}</Link>)}
               </nav>
               <Suspense fallback={<LanguageSwitcherFallback locale={locale} />}>
                 <LanguageSwitcher locale={locale} routes={localizedRoutes} />
               </Suspense>
-              {contactPage && <ButtonLink href={`${pagePath(locale, contactPage.internalName, contactPage.slug)}#anfrage`} size="sm" className="site-booking-cta" aria-label={locale === 'de' ? 'Buchung anfragen' : 'Request booking'}><span className="site-booking-cta__full">{locale === 'de' ? 'Buchung anfragen' : 'Request booking'}</span><span className="site-booking-cta__short" aria-hidden="true">{locale === 'de' ? 'Anfragen' : 'Inquire'}</span></ButtonLink>}
+              {inquiryHref && <ButtonLink href={inquiryHref} size="sm" className="site-booking-cta" aria-label={locale === 'de' ? 'Buchung anfragen' : 'Request booking'}>{locale === 'de' ? 'Buchung anfragen' : 'Request booking'}</ButtonLink>}
+              <MobileNavigation openLabel={locale === 'de' ? 'Menü öffnen' : 'Open menu'} closeLabel={locale === 'de' ? 'Menü schließen' : 'Close menu'}>
+                <nav aria-label={locale === 'de' ? 'Mobile Hauptnavigation' : 'Mobile main navigation'} className="site-mobile-menu__nav">
+                  {navigationLinks.map((link) => <Link key={link.id} href={link.href} target={link.newTab ? '_blank' : undefined} rel={link.newTab ? 'noopener noreferrer' : undefined}>{link.label}</Link>)}
+                </nav>
+                <div className="site-mobile-menu__footer">
+                  <Suspense fallback={<LanguageSwitcherFallback locale={locale} />}>
+                    <LanguageSwitcher locale={locale} routes={localizedRoutes} />
+                  </Suspense>
+                  {inquiryHref && <ButtonLink href={inquiryHref} size="lg" className="site-mobile-menu__cta">{locale === 'de' ? 'Buchung anfragen' : 'Request booking'}</ButtonLink>}
+                </div>
+              </MobileNavigation>
             </div>
           </ScrollAwareHeader>
           <div className="flex-1">{children}</div>

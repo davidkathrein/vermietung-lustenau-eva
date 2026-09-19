@@ -1,11 +1,30 @@
 import type { Payload } from 'payload'
+import sharp from 'sharp'
 
 const api = 'https://api.brightdata.com/datasets/v3'
-const datasetId = 'gd_lk5ns7kz21pck8jpis'
+const datasetId = 'gd_l1vikfch901nx3by4'
 const intervalMs = 6 * 60 * 60 * 1000
 
 type RecordValue = Record<string, unknown>
-type ImportedPost = { externalId: string; permalink: string; caption?: string; publishedAt?: string; imageUrl?: string }
+type ImportedPost = {
+  externalId: string
+  permalink: string
+  caption?: string
+  publishedAt?: string
+  imageUrl?: string
+}
+type MediaCandidate = {
+  url: string
+  width?: number
+  height?: number
+  sourcePriority: number
+  order: number
+}
+type DownloadedImage = {
+  file: { data: Buffer; mimetype: string; name: string; size: number }
+  width?: number
+  height?: number
+}
 
 function object(value: unknown): RecordValue | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as RecordValue : null
@@ -15,11 +34,62 @@ function nonEmpty(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined
 }
 
-function firstMediaUrl(value: unknown): string | undefined {
-  if (typeof value === 'string') return nonEmpty(value)
-  if (Array.isArray(value)) return value.map(firstMediaUrl).find(Boolean)
+function positiveNumber(value: unknown): number | undefined {
+  const number = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN
+  return Number.isFinite(number) && number > 0 ? number : undefined
+}
+
+function urlDimensions(url: string): { width?: number; height?: number } {
+  const match = /(?:^|[_?&/])(?:p|s)(\d{2,5})x(\d{2,5})(?:[_?&/.]|$)/i.exec(url)
+  return match ? { width: Number(match[1]), height: Number(match[2]) } : {}
+}
+
+function dimensions(value: RecordValue, url: string): { width?: number; height?: number } {
+  const nested = object(value.dimensions) || object(value.dimension)
+  const fromUrl = urlDimensions(url)
+  return {
+    width: positiveNumber(value.width) || positiveNumber(value.original_width) || positiveNumber(nested?.width) || fromUrl.width,
+    height: positiveNumber(value.height) || positiveNumber(value.original_height) || positiveNumber(nested?.height) || fromUrl.height,
+  }
+}
+
+function mediaCandidates(value: unknown, sourcePriority: number, order = { value: 0 }): MediaCandidate[] {
+  const directUrl = nonEmpty(value)
+  if (directUrl) {
+    const size = urlDimensions(directUrl)
+    return [{ url: directUrl, ...size, sourcePriority, order: order.value++ }]
+  }
+  if (Array.isArray(value)) return value.flatMap((item) => mediaCandidates(item, sourcePriority, order))
   const item = object(value)
-  return item ? nonEmpty(item.url) || nonEmpty(item.src) || nonEmpty(item.display_url) : undefined
+  if (!item) return []
+  const url = nonEmpty(item.url) || nonEmpty(item.src) || nonEmpty(item.display_url)
+  const direct = url ? [{ url, ...dimensions(item, url), sourcePriority, order: order.value++ }] : []
+  const nested = Object.entries(item).flatMap(([key, child]) =>
+    ['url', 'src', 'display_url', 'width', 'height', 'original_width', 'original_height', 'dimensions', 'dimension'].includes(key)
+      ? []
+      : mediaCandidates(child, sourcePriority, order),
+  )
+  return [...direct, ...nested]
+}
+
+function largestMediaCandidate(post: RecordValue): MediaCandidate | undefined {
+  const order = { value: 0 }
+  const candidates = [
+    ...mediaCandidates(post.image_url, 4, order),
+    ...mediaCandidates(post.images, 3, order),
+    ...mediaCandidates(post.photos, 2, order),
+    ...mediaCandidates(post.thumbnail, 1, order),
+  ]
+  return candidates.reduce<MediaCandidate | undefined>((best, candidate) => {
+    if (!best) return candidate
+    const candidateArea = candidate.width && candidate.height ? candidate.width * candidate.height : undefined
+    const bestArea = best.width && best.height ? best.width * best.height : undefined
+    if (candidateArea && bestArea && candidateArea !== bestArea) return candidateArea > bestArea ? candidate : best
+    if (candidateArea && !bestArea && candidate.sourcePriority >= best.sourcePriority) return candidate
+    if (!candidateArea && bestArea && candidate.sourcePriority <= best.sourcePriority) return best
+    if (candidate.sourcePriority !== best.sourcePriority) return candidate.sourcePriority > best.sourcePriority ? candidate : best
+    return candidate.order < best.order ? candidate : best
+  }, undefined)
 }
 
 export function instagramProfileUrl(value: string | undefined): string | null {
@@ -58,12 +128,13 @@ export function parseInstagramPosts(value: unknown): ImportedPost[] {
     seen.add(externalId)
     const date = nonEmpty(post.datetime) || nonEmpty(post.date_posted)
     const parsedDate = date && !Number.isNaN(Date.parse(date)) ? new Date(date).toISOString() : undefined
+    const image = largestMediaCandidate(post)
     return [{
       externalId,
       permalink,
       caption: nonEmpty(post.caption) || nonEmpty(post.description),
       publishedAt: parsedDate,
-      imageUrl: firstMediaUrl(post.thumbnail) || firstMediaUrl(post.image_url) || firstMediaUrl(post.photos) || firstMediaUrl(post.images),
+      imageUrl: image?.url,
     }]
   })
 }
@@ -77,10 +148,14 @@ async function brightRequest(path: string, key: string, init: RequestInit = {}):
   })
   if (!response.ok) {
     let detail: string | undefined
+    const responseBody = await response.text()
     try {
-      const error = object(await response.json())
+      const error = object(JSON.parse(responseBody))
       detail = nonEmpty(error?.error) || nonEmpty(error?.message)
-    } catch { /* Bright Data did not return a JSON error body. */ }
+    } catch {
+      const plainText = nonEmpty(responseBody)
+      if (plainText && plainText.length <= 240 && !/[<>]/.test(plainText)) detail = plainText
+    }
     const safeDetail = detail?.replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 240)
     throw new Error(`Bright Data returned HTTP ${response.status}${safeDetail ? `: ${safeDetail}` : ''}`)
   }
@@ -97,7 +172,7 @@ function cdnImageUrl(raw: string | undefined): URL | null {
   } catch { return null }
 }
 
-async function importImage(payload: Payload, post: ImportedPost): Promise<number | undefined> {
+async function downloadImage(post: ImportedPost): Promise<DownloadedImage | undefined> {
   const url = cdnImageUrl(post.imageUrl)
   if (!url) return undefined
   const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(10_000), cache: 'no-store' })
@@ -117,13 +192,68 @@ async function importImage(payload: Payload, post: ImportedPost): Promise<number
   }
   if (!total) return undefined
   const extension = mimetype === 'image/png' ? 'png' : mimetype === 'image/webp' ? 'webp' : 'jpg'
+  const data = Buffer.concat(chunks)
+  const metadata = await sharp(data).metadata()
+  return {
+    file: { data, mimetype, name: `instagram-${post.externalId}.${extension}`, size: total },
+    width: metadata.width,
+    height: metadata.height,
+  }
+}
+
+async function importImage(payload: Payload, post: ImportedPost): Promise<number | undefined> {
+  const downloaded = await downloadImage(post)
+  if (!downloaded) return undefined
   const media = await payload.create({
     collection: 'media', locale: 'de',
-    data: { alt: `Instagram-Beitrag ${post.externalId}` },
-    file: { data: Buffer.concat(chunks), mimetype, name: `instagram-${post.externalId}.${extension}`, size: total },
+    data: { alt: '', decorative: true },
+    file: downloaded.file,
   })
-  await payload.update({ collection: 'media', id: media.id, locale: 'en', data: { alt: `Instagram post ${post.externalId}` } })
+  await payload.update({ collection: 'media', id: media.id, locale: 'en', data: { alt: '' } })
   return media.id
+}
+
+function importedInstagramFilenames(externalId: string): string[] {
+  return ['jpg', 'png', 'webp'].map((extension) => `instagram-${externalId}.${extension}`)
+}
+
+function isImportedInstagramImage(filename: unknown, externalId: string): boolean {
+  return importedInstagramFilenames(externalId).includes(String(filename))
+    || /^instagram-[a-zA-Z0-9_-]+\.(?:jpg|png|webp)$/.test(String(filename))
+}
+
+async function findImportedImage(payload: Payload, post: ImportedPost): Promise<number | undefined> {
+  if (!post.imageUrl) return undefined
+  const result = await payload.find({
+    collection: 'media',
+    depth: 0,
+    limit: 1,
+    locale: 'de',
+    where: {
+      or: importedInstagramFilenames(post.externalId).map((filename) => ({ filename: { equals: filename } })),
+    },
+  })
+  return typeof result.docs[0]?.id === 'number' ? result.docs[0].id : undefined
+}
+
+async function upgradeImportedImage(payload: Payload, post: ImportedPost, imageId: number): Promise<boolean> {
+  if (!post.imageUrl) return false
+  const media = await payload.findByID({ collection: 'media', id: imageId, depth: 0, locale: 'de' })
+  if (!isImportedInstagramImage(media.filename, post.externalId)) return false
+  const downloaded = await downloadImage(post)
+  if (!downloaded?.width || !downloaded.height) return false
+  const currentWidth = positiveNumber(media.width)
+  const currentHeight = positiveNumber(media.height)
+  const currentArea = currentWidth && currentHeight ? currentWidth * currentHeight : 0
+  if (downloaded.width * downloaded.height <= currentArea) return false
+  await payload.update({
+    collection: 'media',
+    id: imageId,
+    locale: 'de',
+    data: {},
+    file: downloaded.file,
+  })
+  return true
 }
 
 async function importPosts(payload: Payload, raw: unknown, profileUrl: string): Promise<number> {
@@ -132,7 +262,15 @@ async function importPosts(payload: Payload, raw: unknown, profileUrl: string): 
   const importOne = async (post: ImportedPost): Promise<number> => {
     const existing = (await payload.find({ collection: 'instagram-posts', where: { externalId: { equals: post.externalId } }, limit: 1, depth: 0, locale: 'de' })).docs[0]
     let image = typeof existing?.image === 'number' ? existing.image : undefined
+    const hadAttachedImage = Boolean(image)
     if (!image) {
+      try { image = await findImportedImage(payload, post) }
+      catch (error) { payload.logger.warn({ err: error, msg: `Could not find existing Instagram image ${post.externalId}` }) }
+    }
+    if (image && hadAttachedImage) {
+      try { await upgradeImportedImage(payload, post, image) }
+      catch (error) { payload.logger.warn({ err: error, msg: `Could not upgrade Instagram image ${post.externalId}` }) }
+    } else if (!image) {
       try { image = await importImage(payload, post) }
       catch (error) { payload.logger.warn({ err: error, msg: `Could not import Instagram image ${post.externalId}` }) }
     }
@@ -179,7 +317,7 @@ export async function syncInstagram(payload: Payload, manual = false): Promise<R
     return { state: 'imported', imported }
   }
   if (!manual && status.startedAt && status.profileUrl === profileUrl && now.getTime() - new Date(status.startedAt).getTime() < intervalMs) return { state: 'waiting', nextRunAt: new Date(new Date(status.startedAt).getTime() + intervalMs).toISOString() }
-  const triggered = object(await brightRequest(`/trigger?dataset_id=${datasetId}&type=discover_new&discover_by=url&format=json&limit_per_input=12`, key, {
+  const triggered = object(await brightRequest(`/trigger?dataset_id=${datasetId}&include_errors=true`, key, {
     method: 'POST', body: JSON.stringify([{ url: profileUrl }]),
   }))
   const snapshotId = nonEmpty(triggered?.snapshot_id)

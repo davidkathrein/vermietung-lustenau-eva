@@ -81,6 +81,7 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(function D
         aria-invalid={Boolean(error)}
         aria-required="true"
         aria-describedby={descriptionIds}
+        required
         className="pr-10 tabular-nums"
       />
       <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>

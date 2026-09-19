@@ -12,6 +12,7 @@ describe('shared apartment and seminar calendar', () => {
     const stay = { start: '2026-10-05', end: '2026-10-08', usage: 'stay' as const }
     expect(blocksConflict({ start: '2026-10-05', end: '2026-10-06', usage: 'seminar' }, stay)).toBe(true)
     expect(blocksConflict({ start: '2026-10-08', end: '2026-10-09', usage: 'seminar' }, stay)).toBe(true)
+    expect(blocksConflict({ start: '2026-10-03', end: '2026-10-07', usage: 'seminar' }, stay)).toBe(true)
     expect(blocksConflict({ start: '2026-10-09', end: '2026-10-10', usage: 'seminar' }, stay)).toBe(false)
     expect(blocksConflict({ start: '2026-10-08', end: '2026-10-10', usage: 'stay' }, stay)).toBe(false)
   })
@@ -37,12 +38,12 @@ describe('shared apartment and seminar calendar', () => {
     const unit = await payload.create({ collection: 'accommodations', locale: 'de', draft: true, data: { slug: `seminar-test-${Date.now()}`, name: 'Seminarwohnung', teaser: 'Ein Test', sleeps: 2, seminarCapable: true } })
     let inquiryId: number | undefined
     try {
-      const inquiry = await payload.create({ collection: 'inquiries', data: { kind: 'seminar', accommodations: [unit.id], arrival: '2026-11-05T00:00:00.000Z', name: 'Test Person', email: 'seminar@example.invalid', status: 'new' } })
+      const inquiry = await payload.create({ collection: 'inquiries', data: { kind: 'seminar', accommodations: [unit.id], arrival: '2026-11-05T00:00:00.000Z', departure: '2026-11-07T00:00:00.000Z', name: 'Test Person', email: 'seminar@example.invalid', status: 'new' } })
       inquiryId = inquiry.id
       await payload.update({ collection: 'inquiries', id: inquiry.id, data: { status: 'confirmed', confirmDespiteUnknown: true } })
       const active = await payload.find({ collection: 'manual-blocks', where: { inquiry: { equals: inquiry.id } }, depth: 0 })
       expect(active.docs).toHaveLength(1)
-      expect(active.docs[0]).toMatchObject({ active: true, usage: 'seminar' })
+      expect(active.docs[0]).toMatchObject({ active: true, usage: 'seminar', startDate: '2026-11-05T00:00:00.000Z', endDate: '2026-11-08T00:00:00.000Z' })
       await payload.update({ collection: 'inquiries', id: inquiry.id, data: { status: 'cancelled' } })
       const cancelled = await payload.findByID({ collection: 'manual-blocks', id: active.docs[0].id, depth: 0 })
       expect(cancelled.active).toBe(false)

@@ -72,6 +72,13 @@ export const AccommodationOverviewBlock: Block = {
   fields: [...introFields()],
 }
 
+export const InstagramFeedBlock: Block = {
+  slug: 'instagramFeed',
+  labels: { singular: { de: 'Instagram', en: 'Instagram' }, plural: { de: 'Instagram', en: 'Instagram' } },
+  admin: { images: { thumbnail: { url: '/admin/block-previews/instagramFeed.webp', alt: 'Vorschau des Instagram-Bereichs' } } },
+  fields: [...introFields()],
+}
+
 export const InquiryBlock: Block = {
   slug: 'inquiry',
   labels: { singular: { de: 'Anfrage und Verfügbarkeit', en: 'Inquiry and availability' }, plural: { de: 'Anfragen und Verfügbarkeit', en: 'Inquiries and availability' } },
@@ -89,4 +96,4 @@ export const InquiryBlock: Block = {
   ],
 }
 
-export const pageBlocks = [HeroBlock, RichTextBlock, CTABlock, ContentBlock, FAQBlock, AccommodationOverviewBlock, InquiryBlock]
+export const pageBlocks = [HeroBlock, RichTextBlock, CTABlock, ContentBlock, FAQBlock, AccommodationOverviewBlock, InstagramFeedBlock, InquiryBlock]

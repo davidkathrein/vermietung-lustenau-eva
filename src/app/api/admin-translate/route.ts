@@ -2,7 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 
 import { type ContentLocale, type TranslationEntity } from '@/lib/translation-fields'
-import { translateFields } from '@/lib/translation'
+import { translateFieldBatches } from '@/lib/translation'
 import { buildReviewCandidates, missingTranslationFields, reviewFields, sourceIsComplete, translationUnits } from '@/lib/translation-review'
 
 export const runtime = 'nodejs'
@@ -59,8 +59,7 @@ export async function POST(request: Request): Promise<Response> {
     const fields = reviewFields(input.entity, data)
     const units = translationUnits(fields)
     if (units.length === 0 || units.length > 250 || units.reduce((sum, unit) => sum + unit.text.length, 0) > 50_000) return Response.json({ error: 'Source text is too long' }, { status: 413 })
-    const translated = []
-    for (let index = 0; index < units.length; index += 50) translated.push(...await translateFields(units.slice(index, index + 50), sourceLocale, input.targetLocale))
+    const translated = await translateFieldBatches(units, sourceLocale, input.targetLocale)
     const candidates = buildReviewCandidates(fields, translated).map((field) => {
       if (field.kind !== 'slug' || typeof field.candidate !== 'string') return field
       const slug = field.candidate.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')

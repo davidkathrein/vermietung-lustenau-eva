@@ -1,7 +1,7 @@
 import type { ContentLocale, TranslationField } from './translation-fields'
 
-const defaultModel = 'deepseek/deepseek-v4-flash-0731:free'
-const fallbackModel = 'deepseek/deepseek-v4-flash-0731'
+const defaultModel = 'google/gemini-3.1-flash-lite'
+const fallbackModel = 'google/gemini-2.5-flash'
 
 export async function translateFields(
   fields: TranslationField[],
@@ -15,11 +15,14 @@ export async function translateFields(
   }
 
   const properties = Object.fromEntries(fields.map((_, index) => [String(index), { type: 'string' }]))
-  const requestTranslation = (model: string) => fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const model = process.env.OPENROUTER_MODEL || defaultModel
+  const fallbackModels = model === fallbackModel ? undefined : [fallbackModel]
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model,
+      models: fallbackModels,
       provider: { require_parameters: true },
       temperature: 0,
       messages: [
@@ -47,10 +50,6 @@ export async function translateFields(
     cache: 'no-store',
   })
 
-  const primaryModel = process.env.OPENROUTER_MODEL || defaultModel
-  let response = await requestTranslation(primaryModel)
-  if (response.status === 429 && primaryModel !== fallbackModel) response = await requestTranslation(fallbackModel)
-
   if (!response.ok) throw new Error('Translation provider rejected the request')
   const result = await response.json() as { choices?: { message?: { content?: unknown } }[] }
   const content = result.choices?.[0]?.message?.content
@@ -64,4 +63,14 @@ export async function translateFields(
     if (typeof value !== 'string' || !value.trim() || value.length > 20_000) throw new Error('Incomplete translation response')
     return { path: field.path, text: value.trim() }
   })
+}
+
+export async function translateFieldBatches(
+  fields: TranslationField[],
+  sourceLocale: ContentLocale,
+  targetLocale: ContentLocale,
+  translate: typeof translateFields = translateFields,
+): Promise<TranslationField[]> {
+  const batches = Array.from({ length: Math.ceil(fields.length / 50) }, (_, index) => fields.slice(index * 50, (index + 1) * 50))
+  return (await Promise.all(batches.map((batch) => translate(batch, sourceLocale, targetLocale)))).flat()
 }

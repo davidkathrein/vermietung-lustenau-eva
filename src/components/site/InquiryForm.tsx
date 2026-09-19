@@ -19,6 +19,9 @@ import { DateInput } from './DateInput'
 
 type AvailabilityUnit = { accommodationId: number; state: 'ready' | 'not-connected' | 'error'; blockedDates: string[]; checkedAt?: string }
 type AvailabilityResponse = { units: AvailabilityUnit[] }
+type InquiryKind = 'stay' | 'seminar'
+
+const MAX_RANGE_DAYS = 90
 
 function plusMonths(day: string, months: number): string {
   const date = new Date(`${day}T12:00:00Z`)
@@ -30,6 +33,23 @@ function previousDay(day: string): string {
   const date = new Date(`${day}T12:00:00Z`)
   date.setUTCDate(date.getUTCDate() - 1)
   return date.toISOString().slice(0, 10)
+}
+
+function calendarDayDifference(start: string, end: string): number {
+  return (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000
+}
+
+function departureBounds(kind: InquiryKind, arrival: string, latestDay: string) {
+  const minimumOffset = kind === 'stay' ? 2 : 0
+  const maximumOffset = kind === 'stay' ? MAX_RANGE_DAYS : MAX_RANGE_DAYS - 1
+  return {
+    min: addCalendarDays(arrival, minimumOffset),
+    max: [latestDay, addCalendarDays(arrival, maximumOffset)].sort()[0],
+  }
+}
+
+function RequiredMark() {
+  return <span className="text-destructive" aria-hidden="true">*</span>
 }
 
 type DateInputResult = { day: string; error: null } | { day: ''; error: string }
@@ -63,7 +83,7 @@ function validateDateInput(value: string, referenceDay: string, minDay: string, 
 }
 
 export function InquiryForm({ locale, accommodations, mode, preselectedAccommodation }: { locale: SiteLocale; accommodations: Accommodation[]; mode: 'stay' | 'seminar' | 'both'; preselectedAccommodation?: string }) {
-  const [kind, setKind] = useState<'stay' | 'seminar'>(mode === 'seminar' ? 'seminar' : 'stay')
+  const [kind, setKind] = useState<InquiryKind>(mode === 'seminar' ? 'seminar' : 'stay')
   const [selected, setSelected] = useState<string[]>(preselectedAccommodation ? [preselectedAccommodation] : [])
   const [arrivalInput, setArrivalInput] = useState('')
   const [arrival, setArrival] = useState('')
@@ -87,12 +107,14 @@ export function InquiryForm({ locale, accommodations, mode, preselectedAccommoda
   const latestDay = addCalendarYears(today, 3)
   const latestArrival = addCalendarDays(latestDay, -2)
   const arrivalMax = kind === 'stay' ? latestArrival : latestDay
-  const departureMin = arrival ? addCalendarDays(arrival, 2) : tomorrow
-  const departureMax = arrival ? [latestDay, addCalendarDays(arrival, 90)].sort()[0] : latestDay
+  const departureRange = arrival ? departureBounds(kind, arrival, latestDay) : null
+  const departureMin = departureRange?.min ?? tomorrow
+  const departureMax = departureRange?.max ?? latestDay
   const start = arrival || today
   const end = departure && departure >= start ? departure : plusMonths(start, 3)
   const queryFrom = kind === 'seminar' && arrival ? previousDay(arrival) : start
-  const hasDates = Boolean(arrival && (kind === 'seminar' || departure))
+  const hasDates = Boolean(arrival && departure)
+  const nights = kind === 'stay' && arrival && departure ? calendarDayDifference(arrival, departure) : null
 
   useEffect(() => {
     if (!hasDates) return
@@ -109,17 +131,16 @@ export function InquiryForm({ locale, accommodations, mode, preselectedAccommoda
   const selectedUnits = allowedUnits.filter((unit) => selected.includes(unit.slug))
   const relevantStatuses = selectedUnits.map((unit) => availability?.find((status) => status.accommodationId === unit.id)).filter((status): status is AvailabilityUnit => Boolean(status))
   const unknown = availabilityError || !availability || relevantStatuses.some((status) => status.state !== 'ready')
-  const blocked = hasDates && relevantStatuses.some((status) => status.blockedDates.some((day) => kind === 'seminar' ? day >= queryFrom && day <= arrival : day >= arrival && day < departure))
+  const blocked = hasDates && relevantStatuses.some((status) => status.blockedDates.some((day) => kind === 'seminar' ? day >= queryFrom && day <= departure : day >= arrival && day < departure))
 
-  function applyDepartureInput(input: string, arrivalDay: string): boolean {
+  function applyDepartureInput(input: string, arrivalDay: string, inquiryKind = kind): boolean {
     if (!input.trim()) {
       setDeparture('')
       setDepartureError(null)
       return false
     }
-    const minDay = addCalendarDays(arrivalDay, 2)
-    const maxDay = [latestDay, addCalendarDays(arrivalDay, 90)].sort()[0]
-    const result = validateDateInput(input, today, minDay, maxDay, locale)
+    const bounds = departureBounds(inquiryKind, arrivalDay, latestDay)
+    const result = validateDateInput(input, today, bounds.min, bounds.max, locale)
     setDepartureError(result.error)
     setDeparture(result.day)
     if (result.day) setDepartureInput(formatCalendarDay(result.day, locale))
@@ -133,7 +154,7 @@ export function InquiryForm({ locale, accommodations, mode, preselectedAccommoda
     setArrivalError(null)
     setArrivalInput(formatCalendarDay(day, locale))
     setDeparture('')
-    if (departureInput.trim()) applyDepartureInput(departureInput, day)
+    if (departureInput.trim()) applyDepartureInput(departureInput, day, kind)
   }
 
   function commitArrival(maxDay = arrivalMax): boolean {
@@ -151,13 +172,15 @@ export function InquiryForm({ locale, accommodations, mode, preselectedAccommoda
   function commitDeparture(): boolean {
     if (!arrival) {
       setDeparture('')
-      setDepartureError(locale === 'de' ? 'Bitte gib zuerst eine gültige Anreise ein.' : 'Please enter a valid arrival date first.')
+      setDepartureError(locale === 'de'
+        ? `Bitte gib zuerst ${kind === 'seminar' ? 'einen gültigen Seminarbeginn' : 'eine gültige Anreise'} ein.`
+        : `Please enter ${kind === 'seminar' ? 'a valid seminar start' : 'a valid arrival date'} first.`)
       return false
     }
-    return applyDepartureInput(departureInput, arrival)
+    return applyDepartureInput(departureInput, arrival, kind)
   }
 
-  function switchKind(next: 'stay' | 'seminar') {
+  function switchKind(next: InquiryKind) {
     setAvailability(null)
     setAvailabilityError(false)
     setKind(next)
@@ -170,6 +193,7 @@ export function InquiryForm({ locale, accommodations, mode, preselectedAccommoda
         : `Please choose a date on or before ${formatCalendarDay(next === 'stay' ? latestArrival : latestDay, locale)}.`)
     } else if (arrival) {
       setArrivalError(null)
+      applyDepartureInput(departureInput, arrival, next)
     }
   }
 
@@ -184,25 +208,17 @@ export function InquiryForm({ locale, accommodations, mode, preselectedAccommoda
       return
     }
 
-    let submittedDeparture: string | undefined
-    if (kind === 'stay') {
-      const departureResult = validateDateInput(
-        departureInput,
-        today,
-        addCalendarDays(arrivalResult.day, 2),
-        [latestDay, addCalendarDays(arrivalResult.day, 90)].sort()[0],
-        locale,
-      )
-      setDepartureError(departureResult.error)
-      if (!departureResult.day) {
-        applyArrivalDay(arrivalResult.day)
-        departureInputRef.current?.focus()
-        return
-      }
-      submittedDeparture = departureResult.day
-      setDeparture(departureResult.day)
-      setDepartureInput(formatCalendarDay(departureResult.day, locale))
+    const bounds = departureBounds(kind, arrivalResult.day, latestDay)
+    const departureResult = validateDateInput(departureInput, today, bounds.min, bounds.max, locale)
+    setDepartureError(departureResult.error)
+    if (!departureResult.day) {
+      applyArrivalDay(arrivalResult.day)
+      departureInputRef.current?.focus()
+      return
     }
+    const submittedDeparture = departureResult.day
+    setDeparture(departureResult.day)
+    setDepartureInput(formatCalendarDay(departureResult.day, locale))
 
     setArrival(arrivalResult.day)
     setArrivalInput(formatCalendarDay(arrivalResult.day, locale))
@@ -219,12 +235,12 @@ export function InquiryForm({ locale, accommodations, mode, preselectedAccommoda
 
   return <div className="site-inquiry-form">
     <Card className="site-form-card"><CardHeader><CardTitle>{locale === 'de' ? 'Anfrage senden' : 'Send an inquiry'}</CardTitle></CardHeader><CardContent>
-      {mode === 'both' && <Tabs value={kind} onValueChange={(value) => switchKind(value as 'stay' | 'seminar')} className="mb-7"><TabsList><TabsTrigger value="stay">{locale === 'de' ? 'Übernachtung' : 'Stay'}</TabsTrigger><TabsTrigger value="seminar">{locale === 'de' ? 'Seminar' : 'Seminar'}</TabsTrigger></TabsList></Tabs>}
+      <Tabs value={kind} onValueChange={(value) => switchKind(value as InquiryKind)} className="mb-7"><TabsList><TabsTrigger value="stay">{locale === 'de' ? 'Schlafräume' : 'Bedrooms'}</TabsTrigger><TabsTrigger value="seminar">{locale === 'de' ? 'Seminarraum' : 'Seminar room'}</TabsTrigger></TabsList></Tabs>
       <form onSubmit={submit} className="space-y-6">
-        <fieldset><legend className="mb-3 text-sm font-medium">{locale === 'de' ? 'Wohnung wählen' : 'Choose apartment'}</legend><div className="grid gap-3 sm:grid-cols-2">{allowedUnits.map((unit) => <Label key={unit.id} className="flex items-center gap-3 rounded-lg border border-border px-4 py-3"><Checkbox checked={selected.includes(unit.slug)} onCheckedChange={(checked) => setSelected((previous) => checked ? kind === 'seminar' ? [unit.slug] : [...previous, unit.slug] : previous.filter((slug) => slug !== unit.slug))} /><span>{unit.name}</span></Label>)}</div></fieldset>
+        <fieldset><legend className="mb-3 flex items-center gap-1 text-sm font-medium">{locale === 'de' ? 'Wohnung wählen' : 'Choose apartment'} <RequiredMark /></legend><div className="grid gap-3 sm:grid-cols-2">{allowedUnits.map((unit) => <Label key={unit.id} className="flex items-center gap-3 rounded-lg border border-border px-4 py-3"><Checkbox checked={selected.includes(unit.slug)} onCheckedChange={(checked) => setSelected((previous) => checked ? kind === 'seminar' ? [unit.slug] : [...previous, unit.slug] : previous.filter((slug) => slug !== unit.slug))} /><span>{unit.name}</span></Label>)}</div></fieldset>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="inquiry-arrival">{kind === 'seminar' ? locale === 'de' ? 'Seminartag' : 'Seminar day' : locale === 'de' ? 'Anreise' : 'Arrival'}</Label>
+            <Label htmlFor="inquiry-arrival" className="flex items-center gap-1">{kind === 'seminar' ? locale === 'de' ? 'Seminarbeginn' : 'Seminar start' : locale === 'de' ? 'Anreise' : 'Arrival'} <RequiredMark /></Label>
             <DateInput
               ref={arrivalInputRef}
               id="inquiry-arrival"
@@ -247,8 +263,8 @@ export function InquiryForm({ locale, accommodations, mode, preselectedAccommoda
               onSelect={applyArrivalDay}
             />
           </div>
-          {kind === 'stay' && <div className="space-y-2">
-            <Label htmlFor="inquiry-departure">{locale === 'de' ? 'Abreise' : 'Departure'}</Label>
+          <div className="space-y-2">
+            <Label htmlFor="inquiry-departure" className="flex items-center gap-1">{kind === 'seminar' ? locale === 'de' ? 'Seminarende' : 'Seminar end' : locale === 'de' ? 'Abreise' : 'Departure'} <RequiredMark /></Label>
             <DateInput
               ref={departureInputRef}
               id="inquiry-departure"
@@ -274,18 +290,24 @@ export function InquiryForm({ locale, accommodations, mode, preselectedAccommoda
                 setDepartureInput(formatCalendarDay(day, locale))
               }}
             />
-          </div>}
+            {nights !== null && nights > 0 && <p aria-live="polite" className="text-xs font-medium text-foreground">{nights} {locale === 'de' ? nights === 1 ? 'Nächtigung' : 'Nächtigungen' : nights === 1 ? 'night' : 'nights'}</p>}
+          </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="inquiry-name">{locale === 'de' ? 'Name' : 'Name'}</Label><Input id="inquiry-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required /></div><div className="space-y-2"><Label htmlFor="inquiry-email">E-Mail</Label><Input id="inquiry-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></div></div>
-        <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="inquiry-phone">{locale === 'de' ? 'Telefon (optional)' : 'Phone (optional)'}</Label><Input id="inquiry-phone" type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} /></div><div className="space-y-2"><Label htmlFor="inquiry-guests">{locale === 'de' ? 'Personen' : 'Guests'}</Label><Input id="inquiry-guests" type="number" min={1} max={20} value={guests} onChange={(event) => setGuests(Number(event.target.value))} required /></div></div>
+        <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="inquiry-name" className="flex items-center gap-1">{locale === 'de' ? 'Name' : 'Name'} <RequiredMark /></Label><Input id="inquiry-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required /></div><div className="space-y-2"><Label htmlFor="inquiry-email" className="flex items-center gap-1">E-Mail <RequiredMark /></Label><Input id="inquiry-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></div></div>
+        <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="inquiry-phone">{locale === 'de' ? 'Telefon (optional)' : 'Phone (optional)'}</Label><Input id="inquiry-phone" type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} /></div><div className="space-y-2"><Label htmlFor="inquiry-guests" className="flex items-center gap-1">{locale === 'de' ? 'Personen' : 'Guests'} <RequiredMark /></Label><Input id="inquiry-guests" type="number" min={1} max={20} value={guests} onChange={(event) => setGuests(Number(event.target.value))} required /></div></div>
         <div className="space-y-2"><Label htmlFor="inquiry-message">{locale === 'de' ? 'Nachricht (optional)' : 'Message (optional)'}</Label><Textarea id="inquiry-message" value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} /></div>
         <div className="absolute -left-[9999px]" aria-hidden="true"><Label htmlFor="inquiry-company">Company</Label><Input id="inquiry-company" tabIndex={-1} autoComplete="off" value={company} onChange={(event) => setCompany(event.target.value)} /></div>
-        <p className="text-xs leading-relaxed text-muted-foreground">{locale === 'de' ? 'Das Formular sendet eine unverbindliche Anfrage. Es nimmt keine Buchung vor.' : 'This form sends a non-binding inquiry. It does not make a booking.'}</p>
-        <Button type="submit" disabled={submitState === 'sending' || selected.length === 0}>{submitState === 'sending' ? locale === 'de' ? 'Senden …' : 'Sending…' : locale === 'de' ? 'Anfrage senden' : 'Send inquiry'}</Button>
-        {submitState === 'success' && <Alert><AlertTitle>{locale === 'de' ? 'Anfrage gesendet' : 'Inquiry sent'}</AlertTitle><AlertDescription>{locale === 'de' ? 'Wir melden uns bei dir. Der Termin ist noch nicht reserviert.' : 'We will get back to you. The date is not reserved yet.'}</AlertDescription></Alert>}
-        {submitState === 'error' && <Alert variant="destructive"><AlertTitle>{locale === 'de' ? 'Senden nicht möglich' : 'Could not send'}</AlertTitle><AlertDescription>{locale === 'de' ? 'Bitte versuche es später erneut oder schreibe uns direkt.' : 'Please try again later or contact us directly.'}</AlertDescription></Alert>}
+        <div className="site-inquiry-form__footer space-y-4">
+          <p className="text-xs leading-relaxed text-muted-foreground">{locale === 'de' ? 'Das Formular sendet eine unverbindliche Anfrage. Es nimmt keine Buchung vor.' : 'This form sends a non-binding inquiry. It does not make a booking.'}</p>
+          {submitState === 'success' && <Alert><AlertTitle>{locale === 'de' ? 'Anfrage gesendet' : 'Inquiry sent'}</AlertTitle><AlertDescription>{locale === 'de' ? 'Wir melden uns bei dir. Der Termin ist noch nicht reserviert.' : 'We will get back to you. The date is not reserved yet.'}</AlertDescription></Alert>}
+          {submitState === 'error' && <Alert variant="destructive"><AlertTitle>{locale === 'de' ? 'Senden nicht möglich' : 'Could not send'}</AlertTitle><AlertDescription>{locale === 'de' ? 'Bitte versuche es später erneut oder schreibe uns direkt.' : 'Please try again later or contact us directly.'}</AlertDescription></Alert>}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <Button type="submit" className="w-full sm:w-auto" disabled={submitState === 'sending' || selected.length === 0}>{submitState === 'sending' ? locale === 'de' ? 'Senden …' : 'Sending…' : locale === 'de' ? 'Anfrage senden' : 'Send inquiry'}</Button>
+            <p className="text-xs leading-relaxed text-muted-foreground"><RequiredMark /> {locale === 'de' ? 'Pflichtfeld' : 'Required field'}</p>
+          </div>
+        </div>
       </form>
     </CardContent></Card>
-    <Card className="site-availability-card"><CardHeader><CardTitle>{locale === 'de' ? 'Verfügbarkeit' : 'Availability'}</CardTitle></CardHeader><CardContent className="space-y-4"><p className="text-sm leading-relaxed text-muted-foreground">{locale === 'de' ? 'Kalenderdaten können sich verzögern. Ein Termin ist erst nach unserer Zusage fixiert.' : 'Calendar data can be delayed. A date is only confirmed after our reply.'}</p>{selected.length === 0 ? <p className="text-sm">{locale === 'de' ? 'Bitte zuerst eine Wohnung wählen.' : 'Please choose an apartment first.'}</p> : !hasDates ? <p className="text-sm">{locale === 'de' ? 'Bitte einen gültigen Termin wählen.' : 'Please choose valid dates.'}</p> : blocked ? <Badge variant="destructive">{locale === 'de' ? 'Im gewählten Zeitraum liegt eine Sperre' : 'Some selected dates are blocked'}</Badge> : unknown ? <Badge variant="secondary">{locale === 'de' ? 'Verfügbarkeit auf Anfrage' : 'Availability on request'}</Badge> : <Badge variant="secondary">{locale === 'de' ? 'Derzeit keine Sperre bekannt' : 'No current block known'}</Badge>}{hasDates && <p className="text-xs text-muted-foreground">{locale === 'de' ? 'Geprüfter Zeitraum' : 'Checked period'}: {kind === 'seminar' ? formatCalendarDay(arrival, locale) : `${formatCalendarDay(arrival, locale)} – ${formatCalendarDay(departure, locale)}`}</p>}</CardContent></Card>
+    <Card className="site-availability-card"><CardHeader><CardTitle>{locale === 'de' ? 'Verfügbarkeit' : 'Availability'}</CardTitle></CardHeader><CardContent className="space-y-4"><p className="text-sm leading-relaxed text-muted-foreground">{locale === 'de' ? 'Kalenderdaten können sich verzögern. Ein Termin ist erst nach unserer Zusage fixiert.' : 'Calendar data can be delayed. A date is only confirmed after our reply.'}</p>{selected.length === 0 ? <p className="text-sm">{locale === 'de' ? 'Bitte zuerst eine Wohnung wählen.' : 'Please choose an apartment first.'}</p> : !hasDates ? <p className="text-sm">{locale === 'de' ? 'Bitte einen gültigen Termin wählen.' : 'Please choose valid dates.'}</p> : blocked ? <Badge variant="destructive">{locale === 'de' ? 'Im gewählten Zeitraum liegt eine Sperre' : 'Some selected dates are blocked'}</Badge> : unknown ? <Badge variant="secondary">{locale === 'de' ? 'Verfügbarkeit auf Anfrage' : 'Availability on request'}</Badge> : <Badge variant="secondary">{locale === 'de' ? 'Derzeit keine Sperre bekannt' : 'No current block known'}</Badge>}{hasDates && <p className="text-xs text-muted-foreground">{locale === 'de' ? 'Geprüfter Zeitraum' : 'Checked period'}: {formatCalendarDay(arrival, locale)} – {formatCalendarDay(departure, locale)}</p>}</CardContent></Card>
   </div>
 }

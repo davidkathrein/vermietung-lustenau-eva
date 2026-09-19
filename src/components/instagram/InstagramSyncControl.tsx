@@ -10,7 +10,7 @@ type SyncStatus = { snapshotId?: string | null; startedAt?: string | null; compl
 export default function InstagramSyncControl() {
   const { i18n } = useTranslation()
   const de = i18n.language === 'de'
-  const [configured, setConfigured] = useState(false)
+  const [configured, setConfigured] = useState<boolean | null>(null)
   const [status, setStatus] = useState<SyncStatus>({})
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -51,7 +51,7 @@ export default function InstagramSyncControl() {
     <section className="instagram-sync-control__content" aria-label={de ? 'Instagram-Abgleich' : 'Instagram sync'}>
       <Button className="btn btn--style-primary instagram-sync-control__button" type="button" onClick={() => void run()} disabled={busy || !configured}>{busy ? (de ? 'Prüfe …' : 'Checking…') : status.snapshotId ? (de ? 'Abruf jetzt prüfen' : 'Check collection now') : (de ? 'Instagram jetzt abrufen' : 'Collect Instagram now')}</Button>
       <div className="instagram-sync-control__status" aria-live="polite">
-        {!configured && <p>{de ? 'BRIGHTDATA_API_KEY und INSTAGRAM_PROFILE_URL müssen in der Serverumgebung gesetzt sein.' : 'Set BRIGHTDATA_API_KEY and INSTAGRAM_PROFILE_URL in the server environment.'}</p>}
+        {configured === false && <p>{de ? 'BRIGHTDATA_API_KEY und INSTAGRAM_PROFILE_URL müssen in der Serverumgebung gesetzt sein.' : 'Set BRIGHTDATA_API_KEY and INSTAGRAM_PROFILE_URL in the server environment.'}</p>}
         {status.startedAt && <p>{de ? 'Letzter Start' : 'Last started'}: {new Date(status.startedAt).toLocaleString(de ? 'de-AT' : 'en-GB')}</p>}
         {status.completedAt && <p>{de ? 'Letzter Import' : 'Last import'}: {new Date(status.completedAt).toLocaleString(de ? 'de-AT' : 'en-GB')} ({status.lastImportedCount ?? 0} {de ? 'neue Beiträge' : 'new posts'})</p>}
         {status.lastError && <p role="alert">{status.lastError}</p>}

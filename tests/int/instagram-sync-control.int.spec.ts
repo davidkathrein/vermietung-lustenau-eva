@@ -20,6 +20,16 @@ import InstagramSyncControl from '../../src/components/instagram/InstagramSyncCo
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Instagram sync control', () => {
+  it('does not claim the server configuration is missing while the status request is pending', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => undefined)))
+
+    const view = render(createElement(InstagramSyncControl))
+
+    expect(view.queryByText(/BRIGHTDATA_API_KEY/)).toBeNull()
+    expect((view.getByRole('button', { name: 'Instagram jetzt abrufen' }) as HTMLButtonElement).disabled).toBe(true)
+    view.unmount()
+  })
+
   it('uses the Payload list gutter so the control aligns with the collection content', () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise(() => undefined)))
     const view = render(createElement(InstagramSyncControl))

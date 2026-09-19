@@ -168,8 +168,12 @@ export interface User {
  */
 export interface Media {
   id: number;
-  alt: string;
+  alt?: string | null;
   caption?: string | null;
+  /**
+   * Decorative images may have an empty alt text. Existing alt text remains saved.
+   */
+  decorative?: boolean | null;
   prefix?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -182,6 +186,16 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
+  sizes?: {
+    ai?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -354,6 +368,14 @@ export interface Page {
         id?: string | null;
         blockName?: string | null;
         blockType: 'accommodationOverview';
+      }
+    | {
+        eyebrow?: string | null;
+        headline: string;
+        intro?: string | null;
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'instagramFeed';
       }
     | {
         eyebrow?: string | null;
@@ -627,6 +649,7 @@ export interface UsersSelect<T extends boolean = true> {
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
   caption?: T;
+  decorative?: T;
   prefix?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -639,6 +662,20 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+  sizes?:
+    | T
+    | {
+        ai?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -755,6 +792,15 @@ export interface PagesSelect<T extends boolean = true> {
               blockName?: T;
             };
         accommodationOverview?:
+          | T
+          | {
+              eyebrow?: T;
+              headline?: T;
+              intro?: T;
+              id?: T;
+              blockName?: T;
+            };
+        instagramFeed?:
           | T
           | {
               eyebrow?: T;

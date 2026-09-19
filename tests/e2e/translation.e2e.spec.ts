@@ -49,6 +49,7 @@ test('switches content tabs and applies a translation to the target form', async
       await route.fulfill({
         contentType: 'application/json',
         body: JSON.stringify({ fields: [
+          { path: 'slug', kind: 'slug', source: unit.slug, candidate: 'apartment-one' },
           { path: 'name', kind: 'text', source: 'Wohnung Eins', candidate: 'Apartment One' },
           { path: 'teaser', kind: 'text', source: 'Kurzer deutscher Text', candidate: 'A short English description' },
         ] }),
@@ -57,14 +58,22 @@ test('switches content tabs and applies a translation to the target form', async
 
     await page.reload()
     await page.getByRole('button', { name: /Translate from Deutsch with AI/ }).click()
-    await page.getByRole('button', { name: 'Accept all' }).click()
-    await expect(page.locator('#field-name')).toHaveValue('Apartment One')
+    const nameReview = page.locator('.translation-panel__field').filter({ hasText: 'Name · name' })
+    await nameReview.locator('.translation-panel__choice').filter({ hasText: 'Before' }).click()
+    await expect(nameReview.getByRole('radio', { name: /Before/ })).toBeChecked()
+    await nameReview.getByRole('button', { name: 'Apply selection' }).click()
+    const teaserReview = page.locator('.translation-panel__field').filter({ hasText: 'teaser · teaser' })
+    await teaserReview.getByRole('radio', { name: /AI suggestion/ }).click()
+    await teaserReview.getByRole('button', { name: 'Apply selection' }).click()
+    await page.getByRole('button', { name: 'Accept remaining' }).click()
+    await expect(page.locator('#field-name')).toHaveValue('Old English')
     await expect(page.locator('#field-teaser')).toHaveValue('A short English description')
+    await expect(page.locator('#field-slug')).toHaveValue('apartment-one')
     await expect(page.getByRole('tab', { name: 'Deutsch' })).toBeDisabled()
     await expect(page.getByRole('tab', { name: 'Deutsch' })).toBeEnabled({ timeout: 60_000 })
 
     const english = await payload.findByID({ collection: 'accommodations', id: unit.id, locale: 'en', fallbackLocale: false, draft: true })
-    expect(english.name).toBe('Apartment One')
+    expect(english.name).toBe('Old English')
     expect(english.teaser).toBe('A short English description')
     const german = await payload.findByID({ collection: 'accommodations', id: unit.id, locale: 'de', fallbackLocale: false })
     expect(german.name).toBe('Wohnung Eins')

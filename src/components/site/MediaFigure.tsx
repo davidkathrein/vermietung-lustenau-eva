@@ -6,7 +6,7 @@ export function MediaFigure({ media, className = '', eager = false }: { media: M
     <figure className={`site-media ${className}`}>
       {/* Uploads may live locally or in Vercel Blob, so use the returned URL directly. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={media.url} alt={media.alt || ''} loading={eager ? 'eager' : 'lazy'} fetchPriority={eager ? 'high' : undefined} />
+      <img src={media.url} alt={media.decorative ? '' : (media.alt || '')} loading={eager ? 'eager' : 'lazy'} fetchPriority={eager ? 'high' : undefined} />
       {media.caption && <figcaption>{media.caption}</figcaption>}
     </figure>
   )

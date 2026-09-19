@@ -22,8 +22,8 @@ function previousDay(value: string): string {
 function idOf(value: number | { id: number }): number { return typeof value === 'number' ? value : value.id }
 
 export function blocksConflict(candidate: { start: string; end: string; usage: Usage }, existing: { start: string; end: string; usage: Usage }): boolean {
-  if (candidate.usage === 'seminar' && existing.usage === 'stay') return candidate.start >= existing.start && candidate.start <= existing.end
-  if (candidate.usage === 'stay' && existing.usage === 'seminar') return existing.start >= candidate.start && existing.start <= candidate.end
+  if (candidate.usage === 'seminar' && existing.usage === 'stay') return candidate.start <= existing.end && existing.start < candidate.end
+  if (candidate.usage === 'stay' && existing.usage === 'seminar') return existing.start <= candidate.end && candidate.start < existing.end
   return candidate.start < existing.end && existing.start < candidate.end
 }
 
@@ -41,7 +41,7 @@ export const syncInquiryBlock: CollectionAfterChangeHook<Inquiry> = async ({ doc
   if (unchanged) return doc
 
   const start = day(doc.arrival)
-  const end = doc.kind === 'seminar' ? nextDay(start) : doc.departure ? day(doc.departure) : ''
+  const end = doc.kind === 'seminar' ? nextDay(doc.departure ? day(doc.departure) : start) : doc.departure ? day(doc.departure) : ''
   if (!end || end <= start) throw new Error('Ungültiger Belegungszeitraum.')
   const usage: Usage = doc.kind === 'seminar' ? 'seminar' : 'stay'
   const candidate = { start, end, usage }
@@ -62,7 +62,7 @@ export const syncInquiryBlock: CollectionAfterChangeHook<Inquiry> = async ({ doc
     }
 
     const feedStart = usage === 'seminar' ? previousDay(start) : start
-    const feedThrough = usage === 'seminar' ? start : previousDay(end)
+    const feedThrough = previousDay(end)
     const availability = await getAvailability(unit, feedStart, feedThrough)
     if (availability.blockedDates.some((blockedDay) => blockedDay >= feedStart && blockedDay <= feedThrough)) throw new Error(`Plattform-Kalender meldet ${unit.name} im gewählten Zeitraum als belegt.`)
     if (availability.state !== 'ready' && !doc.confirmDespiteUnknown) throw new Error(`Plattform-Verfügbarkeit für ${unit.name} ist unbekannt. Vor einer Zusage manuell prüfen und die Ausnahme bestätigen.`)

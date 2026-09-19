@@ -1,7 +1,7 @@
 'use client'
 
 import { Dialog } from '@base-ui/react/dialog'
-import { ArrowsOutIcon, ArrowLeftIcon, ArrowRightIcon, XIcon } from '@phosphor-icons/react'
+import { ArrowLeftIcon, ArrowRightIcon, XIcon } from '@phosphor-icons/react'
 import { useRef, useState } from 'react'
 import type { Swiper as SwiperInstance } from 'swiper'
 import { Swiper, SwiperSlide } from 'swiper/react'
@@ -51,7 +51,6 @@ export function AccommodationGallery({ images, locale, name }: { images: Accommo
               {/* Payload's upload URL can point to local storage or Vercel Blob. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={image.src} alt={image.alt} loading={index === 0 ? 'eager' : 'lazy'} fetchPriority={index === 0 ? 'high' : undefined} />
-              <span className="site-room-carousel__open-label"><ArrowsOutIcon aria-hidden="true" />{locale === 'de' ? 'Bild öffnen' : 'Open image'}</span>
             </Button>
             {image.caption && <figcaption>{image.caption}</figcaption>}
           </figure>
