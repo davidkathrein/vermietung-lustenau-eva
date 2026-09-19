@@ -75,7 +75,15 @@ async function brightRequest(path: string, key: string, init: RequestInit = {}):
     cache: 'no-store',
     signal: AbortSignal.timeout(25_000),
   })
-  if (!response.ok) throw new Error(`Bright Data returned HTTP ${response.status}`)
+  if (!response.ok) {
+    let detail: string | undefined
+    try {
+      const error = object(await response.json())
+      detail = nonEmpty(error?.error) || nonEmpty(error?.message)
+    } catch { /* Bright Data did not return a JSON error body. */ }
+    const safeDetail = detail?.replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 240)
+    throw new Error(`Bright Data returned HTTP ${response.status}${safeDetail ? `: ${safeDetail}` : ''}`)
+  }
   return response.json() as Promise<unknown>
 }
 
@@ -171,8 +179,8 @@ export async function syncInstagram(payload: Payload, manual = false): Promise<R
     return { state: 'imported', imported }
   }
   if (!manual && status.startedAt && status.profileUrl === profileUrl && now.getTime() - new Date(status.startedAt).getTime() < intervalMs) return { state: 'waiting', nextRunAt: new Date(new Date(status.startedAt).getTime() + intervalMs).toISOString() }
-  const triggered = object(await brightRequest(`/trigger?dataset_id=${datasetId}&type=discover_new&discover_by=url&format=json`, key, {
-    method: 'POST', body: JSON.stringify([{ url: profileUrl, num_of_posts: 12 }]),
+  const triggered = object(await brightRequest(`/trigger?dataset_id=${datasetId}&type=discover_new&discover_by=url&format=json&limit_per_input=12`, key, {
+    method: 'POST', body: JSON.stringify([{ url: profileUrl }]),
   }))
   const snapshotId = nonEmpty(triggered?.snapshot_id)
   if (!snapshotId) throw new Error('Bright Data did not return a snapshot ID')

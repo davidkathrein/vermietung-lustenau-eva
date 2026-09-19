@@ -48,6 +48,25 @@ describe('Instagram sync', () => {
     ])
   })
 
+  it('includes Bright Data validation details without exposing the response body', async () => {
+    process.env.BRIGHTDATA_API_KEY = 'test-key'
+    process.env.INSTAGRAM_PROFILE_URL = 'https://www.instagram.com/example/'
+    const payload = {
+      findGlobal: vi.fn(async () => ({})),
+      updateGlobal: vi.fn(),
+    } as unknown as Payload
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(Response.json(
+      { error: 'Invalid input provided', code: 'validation_error', input: { apiKey: 'must-not-leak' } },
+      { status: 400 },
+    ))
+
+    const error = await syncInstagram(payload, true).catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).message).toBe('Bright Data returned HTTP 400: Invalid input provided')
+    expect((error as Error).message).not.toContain('must-not-leak')
+  })
+
   it('starts a snapshot, waits, then imports without overwriting existing editorial content', async () => {
     process.env.BRIGHTDATA_API_KEY = 'test-key'
     process.env.INSTAGRAM_PROFILE_URL = 'https://www.instagram.com/example/'
@@ -72,7 +91,8 @@ describe('Instagram sync', () => {
 
     expect(await syncInstagram(payload, true)).toMatchObject({ state: 'started' })
     expect(fetchMock.mock.calls[0][0]).toContain('type=discover_new&discover_by=url')
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual([{ url: 'https://www.instagram.com/example/', num_of_posts: 12 }])
+    expect(fetchMock.mock.calls[0][0]).toContain('limit_per_input=12')
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual([{ url: 'https://www.instagram.com/example/' }])
     expect(await syncInstagram(payload)).toMatchObject({ state: 'running' })
     expect(await syncInstagram(payload)).toEqual({ state: 'imported', imported: 1 })
     expect(posts.get('123')).toMatchObject({ caption: 'Original', sourceProfile: 'https://www.instagram.com/example/', visible: true })
