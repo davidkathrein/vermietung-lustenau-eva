@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import { expandManualBlock, parseBlockedDates } from '../../src/lib/availability'
+import { todayInVienna, validCalendarDay } from '../../src/lib/calendar-day'
 
 describe('iCal availability', () => {
+  it('uses one Vienna day for forms and both APIs', () => {
+    expect(todayInVienna(new Date('2026-09-18T22:30:00Z'))).toBe('2026-09-19')
+    expect(validCalendarDay('2026-02-29')).toBe(false)
+    expect(validCalendarDay('2028-02-29')).toBe(true)
+  })
   it('blocks manual dates through the day before the exclusive end', () => {
     expect(expandManualBlock('2026-09-20T00:00:00.000Z', '2026-09-23T00:00:00.000Z', '2026-09-21', '2026-09-24'))
       .toEqual(['2026-09-21', '2026-09-22'])

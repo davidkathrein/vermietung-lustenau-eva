@@ -1,9 +1,12 @@
 import config from '@payload-config'
 import { getPayload } from 'payload'
 
+import { todayInVienna, validCalendarDay } from '@/lib/calendar-day'
+
 export const runtime = 'nodejs'
 
 type InquiryInput = {
+  locale?: unknown
   kind?: unknown
   accommodationSlugs?: unknown
   arrival?: unknown
@@ -20,12 +23,6 @@ function text(value: unknown, maxLength: number): string | null {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
   return trimmed.length <= maxLength ? trimmed : null
-}
-
-function validDay(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-  const date = new Date(`${value}T00:00:00Z`)
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -51,6 +48,7 @@ export async function POST(request: Request): Promise<Response> {
   if (input.company) return Response.json({ ok: true }, { status: 202 })
 
   const kind = input.kind
+  const locale = input.locale === 'en' ? 'en' : 'de'
   const slugs = input.accommodationSlugs
   const arrival = text(input.arrival, 10)
   const departure = text(input.departure, 10)
@@ -64,7 +62,7 @@ export async function POST(request: Request): Promise<Response> {
     !Array.isArray(slugs) || slugs.length < 1 || slugs.length > 3 ||
     !slugs.every((slug) => typeof slug === 'string' && /^[a-z0-9-]{1,80}$/.test(slug)) ||
     new Set(slugs).size !== slugs.length ||
-    !arrival || !validDay(arrival) ||
+    !arrival || !validCalendarDay(arrival) ||
     !name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
     (phone === null && input.phone !== undefined) ||
     (message === null && input.message !== undefined) ||
@@ -72,10 +70,10 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Invalid inquiry' }, { status: 400 })
   }
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayInVienna()
   if (arrival < today) return Response.json({ error: 'Date is in the past' }, { status: 400 })
   if (kind === 'stay') {
-    if (!departure || !validDay(departure)) return Response.json({ error: 'Departure required' }, { status: 400 })
+    if (!departure || !validCalendarDay(departure)) return Response.json({ error: 'Departure required' }, { status: 400 })
     const nights = (Date.parse(`${departure}T00:00:00Z`) - Date.parse(`${arrival}T00:00:00Z`)) / 86_400_000
     if (nights < 2 || nights > 90) return Response.json({ error: 'Stay must be between 2 and 90 nights' }, { status: 400 })
   } else if (slugs.length !== 1) {
@@ -85,7 +83,9 @@ export async function POST(request: Request): Promise<Response> {
   const payload = await getPayload({ config })
   const { docs } = await payload.find({
     collection: 'accommodations',
-    where: { and: [{ slug: { in: slugs as string[] } }, { published: { equals: true } }] },
+    where: { and: [{ slug: { in: slugs as string[] } }, { published: { equals: true } }, { _status: { equals: 'published' } }] },
+    locale,
+    fallbackLocale: false,
     depth: 0,
     limit: 3,
   })

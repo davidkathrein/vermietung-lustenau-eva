@@ -11,7 +11,7 @@ export const ManualBlocks: CollectionConfig = {
   admin: {
     useAsTitle: 'reason',
     defaultColumns: ['accommodation', 'startDate', 'endDate', 'reason'],
-    description: { de: 'Sperrt die Tage im Website-Kalender. Airbnb und Booking.com müssen separat gesperrt werden.', en: 'Blocks dates in the website calendar. Airbnb and Booking.com must be blocked separately.' },
+    description: { de: 'Sperrt Tage auf der Website und im privaten Kalenderexport. Plattformen übernehmen importierte Kalender mit Verzögerung.', en: 'Blocks dates on the website and in the private calendar export. Platforms import calendars with a delay.' },
   },
   access: {
     read: adminOnly,
@@ -32,5 +32,12 @@ export const ManualBlocks: CollectionConfig = {
     { name: 'startDate', type: 'date', label: { de: 'Beginn', en: 'Start date' }, required: true, index: true, admin: { date: { pickerAppearance: 'dayOnly' }, description: { de: 'Erster gesperrter Tag', en: 'First blocked day' } } },
     { name: 'endDate', type: 'date', label: { de: 'Ende', en: 'End date' }, required: true, index: true, admin: { date: { pickerAppearance: 'dayOnly' }, description: { de: 'Erster wieder freier Tag (ausschließlich)', en: 'First free day (exclusive)' } } },
     { name: 'reason', type: 'text', label: { de: 'Grund', en: 'Reason' }, required: true },
+    { name: 'inquiry', type: 'relationship', relationTo: 'inquiries', label: { de: 'Zugehörige Anfrage', en: 'Related inquiry' }, index: true },
+    { name: 'usage', type: 'select', label: { de: 'Nutzung', en: 'Usage' }, defaultValue: 'manual', options: [
+      { label: { de: 'Manuelle Sperre', en: 'Manual block' }, value: 'manual' },
+      { label: { de: 'Übernachtung', en: 'Stay' }, value: 'stay' },
+      { label: { de: 'Seminar', en: 'Seminar' }, value: 'seminar' },
+    ] },
+    { name: 'active', type: 'checkbox', label: { de: 'Aktiv', en: 'Active' }, defaultValue: true, index: true },
   ],
 }

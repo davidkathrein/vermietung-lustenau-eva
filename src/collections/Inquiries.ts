@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
+import { syncInquiryBlock } from '../hooks/syncInquiryBlock'
 
 export const Inquiries: CollectionConfig = {
   slug: 'inquiries',
@@ -18,6 +19,7 @@ export const Inquiries: CollectionConfig = {
     update: adminOnly,
     delete: adminOnly,
   },
+  hooks: { afterChange: [syncInquiryBlock] },
   fields: [
     {
       name: 'kind',
@@ -44,6 +46,7 @@ export const Inquiries: CollectionConfig = {
     { name: 'phone', type: 'text', label: { de: 'Telefon', en: 'Phone' } },
     { name: 'guests', type: 'number', label: { de: 'Gäste', en: 'Guests' }, min: 1 },
     { name: 'message', type: 'textarea', label: { de: 'Nachricht', en: 'Message' } },
+    { name: 'confirmDespiteUnknown', type: 'checkbox', label: { de: 'Trotz unbekannter Plattform-Verfügbarkeit bestätigen', en: 'Confirm despite unknown platform availability' }, defaultValue: false, admin: { condition: (_, siblingData) => siblingData.status === 'confirmed', description: { de: 'Nur nach manueller Prüfung aktivieren, wenn ein Kalender fehlt oder nicht erreichbar ist.', en: 'Use only after a manual check when a calendar is missing or unavailable.' } } },
     {
       name: 'status',
       type: 'select',
@@ -54,6 +57,8 @@ export const Inquiries: CollectionConfig = {
         { label: { de: 'Neu', en: 'New' }, value: 'new' },
         { label: { de: 'In Bearbeitung', en: 'Reviewing' }, value: 'reviewing' },
         { label: { de: 'Angebot gesendet', en: 'Offer sent' }, value: 'offered' },
+        { label: { de: 'Zugesagt', en: 'Confirmed' }, value: 'confirmed' },
+        { label: { de: 'Storniert', en: 'Cancelled' }, value: 'cancelled' },
         { label: { de: 'Abgeschlossen', en: 'Closed' }, value: 'closed' },
       ],
     },

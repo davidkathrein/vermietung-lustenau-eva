@@ -1,5 +1,6 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
+import { resendAdapter } from '@payloadcms/email-resend'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { de } from '@payloadcms/translations/languages/de'
 import { en } from '@payloadcms/translations/languages/en'
@@ -12,9 +13,14 @@ import sharp from 'sharp'
 import { Users } from './collections/Users'
 import { Media } from './collections/Media'
 import { Accommodations } from './collections/Accommodations'
+import { Pages } from './collections/Pages'
 import { Inquiries } from './collections/Inquiries'
 import { ManualBlocks } from './collections/ManualBlocks'
+import { CalendarHealth } from './collections/CalendarHealth'
+import { SlugRedirects } from './collections/SlugRedirects'
+import { InstagramPosts } from './collections/InstagramPosts'
 import { SiteSettings } from './globals/SiteSettings'
+import { InstagramSyncStatus } from './globals/InstagramSyncStatus'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -28,8 +34,8 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Accommodations, ManualBlocks, Inquiries],
-  globals: [SiteSettings],
+  collections: [Users, Media, Pages, Accommodations, InstagramPosts, ManualBlocks, Inquiries, CalendarHealth, SlugRedirects],
+  globals: [SiteSettings, InstagramSyncStatus],
   i18n: {
     fallbackLanguage: 'de',
     supportedLanguages: { de, en },
@@ -43,6 +49,11 @@ export default buildConfig({
     fallback: true,
   },
   editor: lexicalEditor(),
+  email: process.env.RESEND_API_KEY && process.env.EMAIL_FROM ? resendAdapter({
+    apiKey: process.env.RESEND_API_KEY,
+    defaultFromAddress: process.env.EMAIL_FROM,
+    defaultFromName: 'Wohnen in Lustenau',
+  }) : undefined,
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
@@ -51,6 +62,7 @@ export default buildConfig({
     pool: { connectionString: databaseURL },
     migrationDir: path.resolve(dirname, 'postgres-migrations'),
   }) : sqliteAdapter({
+    push: false,
     client: {
       url: databaseURL,
       authToken: process.env.DATABASE_AUTH_TOKEN,

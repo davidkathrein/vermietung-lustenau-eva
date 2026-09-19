@@ -15,6 +15,7 @@ export const Media: CollectionConfig = {
       required: true,
       localized: true,
     },
+    { name: 'caption', type: 'text', label: { de: 'Bildunterschrift', en: 'Caption' }, localized: true },
   ],
   upload: true,
 }

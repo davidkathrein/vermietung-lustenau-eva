@@ -1,6 +1,8 @@
 import type { CollectionConfig } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
+import { requireBilingualPublish } from '../hooks/requireBilingualPublish'
+import { recordSlugRedirect } from '../hooks/recordSlugRedirect'
 
 export const Accommodations: CollectionConfig = {
   slug: 'accommodations',
@@ -13,14 +15,16 @@ export const Accommodations: CollectionConfig = {
     defaultColumns: ['name', 'sleeps', 'seminarCapable', 'published'],
   },
   access: {
-    read: ({ req }) => req.user ? true : { published: { equals: true } },
+    read: ({ req }) => req.user ? true : { published: { equals: true }, _status: { equals: 'published' } },
     create: adminOnly,
     update: adminOnly,
     delete: adminOnly,
   },
+  versions: { drafts: { autosave: { interval: 30000 } }, maxPerDoc: 30 },
+  hooks: { beforeChange: [requireBilingualPublish('accommodations')], afterChange: [recordSlugRedirect('accommodations')] },
   fields: [
     { name: 'translationPanel', type: 'ui', admin: { components: { Field: '/components/translation/TranslationPanel' } } },
-    { name: 'slug', type: 'text', label: { de: 'Kurzname', en: 'Slug' }, required: true, unique: true, index: true },
+    { name: 'slug', type: 'text', label: { de: 'URL-Segment', en: 'URL segment' }, required: true, localized: true, unique: true, index: true, validate: (value: unknown) => typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) || 'Bitte nur Kleinbuchstaben, Zahlen und Bindestriche verwenden.' },
     { name: 'name', type: 'text', label: { de: 'Name', en: 'Name' }, required: true, localized: true },
     { name: 'teaser', type: 'textarea', label: { de: 'Kurzbeschreibung', en: 'Short description' }, required: true, localized: true },
     { name: 'description', type: 'textarea', label: { de: 'Beschreibung', en: 'Description' }, localized: true },
@@ -41,7 +45,6 @@ export const Accommodations: CollectionConfig = {
       label: { de: 'Bilder', en: 'Gallery' },
       fields: [
         { name: 'image', type: 'upload', label: { de: 'Bild', en: 'Image' }, relationTo: 'media', required: true },
-        { name: 'caption', type: 'text', label: { de: 'Bildunterschrift', en: 'Caption' }, localized: true },
       ],
     },
     { name: 'floorplan', type: 'upload', label: { de: 'Grundriss', en: 'Floor plan' }, relationTo: 'media' },
@@ -55,6 +58,7 @@ export const Accommodations: CollectionConfig = {
         { name: 'booking', type: 'text', label: 'Booking.com', access: { read: ({ req }) => Boolean(req.user), update: ({ req }) => Boolean(req.user) } },
       ],
     },
+    { name: 'calendarExport', type: 'ui', admin: { components: { Field: '/components/calendar/CalendarExportField' } } },
     { name: 'sortOrder', type: 'number', label: { de: 'Reihenfolge', en: 'Sort order' }, defaultValue: 0 },
     { name: 'published', type: 'checkbox', label: { de: 'Veröffentlicht', en: 'Published' }, defaultValue: false, index: true },
   ],

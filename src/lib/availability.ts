@@ -106,7 +106,7 @@ async function loadFeed(url: string): Promise<string> {
   if (parsed.protocol !== 'https:' || !allowed) throw new Error('Unsupported iCal host')
 
   const response = await fetch(parsed.toString(), {
-    next: { revalidate: 60 },
+    cache: 'no-store',
     redirect: 'error',
     signal: AbortSignal.timeout(8_000),
   })
@@ -114,6 +114,11 @@ async function loadFeed(url: string): Promise<string> {
   const text = await response.text()
   if (Buffer.byteLength(text, 'utf8') > MAX_FEED_BYTES) throw new Error('iCal feed too large')
   return text
+}
+
+export async function probeFeed(url: string): Promise<void> {
+  const feed = await loadFeed(url)
+  parseBlockedDates(feed, '2000-01-01', '2000-01-02')
 }
 
 export async function getAvailability(
@@ -124,20 +129,9 @@ export async function getAvailability(
 ): Promise<Availability> {
   const airbnb = accommodation.ical?.airbnb?.trim()
   const booking = accommodation.ical?.booking?.trim()
-  if (!airbnb || !booking) {
-    return { accommodationId: accommodation.id, state: 'not-connected', blockedDates: manualDates }
-  }
-
-  try {
-    const feeds = await Promise.all([loadFeed(airbnb), loadFeed(booking)])
-    const blocked = new Set([...manualDates, ...feeds.flatMap((feed) => parseBlockedDates(feed, from, through))])
-    return {
-      accommodationId: accommodation.id,
-      state: 'ready',
-      blockedDates: [...blocked].sort(),
-      checkedAt: new Date().toISOString(),
-    }
-  } catch {
-    return { accommodationId: accommodation.id, state: 'error', blockedDates: manualDates }
-  }
+  const urls = [airbnb, booking].filter((url): url is string => Boolean(url))
+  const settled = await Promise.allSettled(urls.map(async (url) => parseBlockedDates(await loadFeed(url), from, through)))
+  const blocked = new Set([...manualDates, ...settled.flatMap((result) => result.status === 'fulfilled' ? result.value : [])])
+  const state = settled.some((result) => result.status === 'rejected') ? 'error' : urls.length < 2 ? 'not-connected' : 'ready'
+  return { accommodationId: accommodation.id, state, blockedDates: [...blocked].sort(), checkedAt: state === 'ready' ? new Date().toISOString() : undefined }
 }
