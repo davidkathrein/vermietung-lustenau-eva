@@ -139,6 +139,29 @@
     line-height: 1.5;
   }
 
+  a[href] {
+    color: inherit;
+    cursor: pointer;
+    text-decoration-line: underline;
+    text-decoration-thickness: 0.08em;
+    text-decoration-color: color-mix(in oklch, currentColor 55%, transparent);
+    text-underline-offset: 0.2em;
+  }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role='button'][aria-disabled='true'] {
+    cursor: not-allowed;
+  }
+
+  [data-slot='button'] {
+    text-decoration: none;
+  }
+
   h1,
   h2,
   h3,
@@ -247,6 +270,7 @@
 
 .site-action {
   gap: 0.55rem;
+  text-decoration: none;
   transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
@@ -423,7 +447,9 @@
   color: var(--foreground);
   font-size: 0.875rem;
   font-weight: 500;
-  text-decoration: none;
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in oklch, currentColor 55%, transparent);
+  text-underline-offset: 0.25em;
 }
 
 .site-card-link svg { width: 1rem; height: 1rem; }
@@ -484,10 +510,12 @@
   color: var(--muted-foreground);
   font-size: 0.875rem;
   font-weight: 500;
-  text-decoration: none;
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in oklch, currentColor 55%, transparent);
+  text-underline-offset: 0.25em;
 }
 
-.site-back span { font-size: 1.2rem; line-height: 1; }
+.site-back svg { width: 1rem; height: 1rem; }
 .site-room__heading {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
@@ -518,8 +546,10 @@
 .site-room-carousel { position: relative; overflow: hidden; border-radius: var(--radius); background: var(--muted); }
 .site-room-carousel__swiper { width: 100%; }
 .site-room-carousel__figure { position: relative; width: 100%; aspect-ratio: 1.9; margin: 0; }
-.site-room-carousel__open { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+.site-room-carousel__open { position: relative; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .site-room-carousel__open img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.site-room-carousel__open-label { position: absolute; top: 1rem; right: 1rem; display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.65rem; border-radius: var(--radius); background: rgb(255 255 255 / 90%); color: var(--foreground); font-size: 0.75rem; font-weight: 600; box-shadow: 0 2px 12px rgb(0 0 0 / 20%); pointer-events: none; }
+.site-room-carousel__open-label svg { width: 0.95rem; height: 0.95rem; }
 .site-room-carousel__figure figcaption {
   position: absolute;
   inset: auto 0 0;
@@ -604,11 +634,15 @@
 .site-availability-card [data-slot='badge'] { height: auto; line-height: 1.4; white-space: normal; }
 
 .site-header {
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 10;
   border-bottom: 1px solid var(--border);
   background: var(--background);
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+.site-header[data-visible='false'] { transform: translateY(-100%); }
 
 .site-header__inner {
   display: grid;
@@ -632,6 +666,10 @@
   font-weight: 400;
   letter-spacing: -0.02em;
   line-height: 1.3;
+  text-decoration-line: underline;
+  text-decoration-thickness: 0.07em;
+  text-decoration-color: color-mix(in oklch, currentColor 45%, transparent);
+  text-underline-offset: 0.22em;
 }
 
 .site-brand small {
@@ -651,13 +689,14 @@
 
 .site-nav__link {
   padding-block: 0.6rem;
-  border-bottom: 1px solid transparent;
   color: var(--foreground);
   font-size: 0.875rem;
   font-weight: 500;
-  text-decoration: none;
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in oklch, currentColor 45%, transparent);
+  text-underline-offset: 0.3em;
   white-space: nowrap;
-  transition: border-color 160ms ease, color 160ms ease;
+  transition: color 160ms ease, text-decoration-color 160ms ease;
 }
 
 .site-language {
@@ -670,7 +709,7 @@
   white-space: nowrap;
 }
 
-.site-language a { color: var(--muted-foreground); text-decoration: none; text-underline-offset: 0.25em; }
+.site-language a { color: var(--muted-foreground); text-decoration-line: underline; text-decoration-color: color-mix(in oklch, currentColor 55%, transparent); text-underline-offset: 0.25em; }
 .site-language__current { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 0.3em; }
 .site-language a:focus-visible { border-radius: 2px; outline: 2px solid var(--ring); outline-offset: 4px; }
 .site-booking-cta__short { display: none; }
@@ -725,7 +764,8 @@
   color: var(--primary-foreground);
   font-size: 0.875rem;
   line-height: 1.5;
-  text-decoration: none;
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in oklch, currentColor 55%, transparent);
   text-underline-offset: 0.25em;
 }
 
@@ -746,11 +786,16 @@
 @media (hover: hover) and (pointer: fine) {
   .site-action:active,
   .site-card-link:active { transform: scale(0.97); }
-  .site-nav__link:hover { border-color: var(--foreground); }
-  .site-language a:hover { color: var(--foreground); text-decoration: underline; }
-  .site-card-link:hover { color: var(--muted-foreground); }
+  a[href]:not([data-slot='button']):hover { text-decoration-color: currentColor; }
+  .site-nav__link:hover { text-decoration-color: currentColor; }
+  .site-language a:hover { color: var(--foreground); text-decoration-color: currentColor; }
+  .site-card-link:hover { color: var(--muted-foreground); text-decoration-color: currentColor; }
   .site-room-carousel__preview:hover { border-color: white; transform: translateY(-2px); }
-  .site-footer a:hover { text-decoration: underline; }
+  .site-footer a:hover { text-decoration-color: currentColor; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header { transition-duration: 0.01ms; }
 }
 
 @media (max-width: 1024px) {

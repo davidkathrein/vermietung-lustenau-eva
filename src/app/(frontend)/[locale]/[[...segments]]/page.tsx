@@ -10,7 +10,8 @@ import { LivePage } from '@/components/site/LivePage'
 import { AccommodationGallery } from '@/components/site/AccommodationGallery'
 import { PageBlocks } from '@/components/site/PageBlocks'
 import { Badge } from '@/components/ui/badge'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, ButtonLink } from '@/components/ui/button'
+import { ArrowLeftIcon, ArrowUpRightIcon } from '@/components/ui/link-icons'
 import { apartmentBase, isSiteLocale, type SiteLocale } from '@/lib/locale'
 import { getPublicAccommodationBySlug, getPublicAccommodations, getPublicHomepage, getPublicPageBySlug, getRedirectTarget } from '@/lib/public-content'
 import type { Accommodation, Page } from '@/payload-types'
@@ -79,7 +80,7 @@ export default async function ContentPage({ params }: Props) {
       const requestHeaders = await headers()
       const host = requestHeaders.get('host') || 'localhost:3000'
       const protocol = requestHeaders.get('x-forwarded-proto') || (host.startsWith('localhost') ? 'http' : 'https')
-      return <><div className="flex items-center justify-between bg-brand-accent px-5 py-2 text-xs font-semibold text-brand-accent-foreground"><span>{locale === 'de' ? 'Entwurfsvorschau' : 'Draft preview'}</span><form action="/api/preview/exit" method="post"><button type="submit" className="underline">{locale === 'de' ? 'Vorschau verlassen' : 'Exit preview'}</button></form></div><LivePage initialPage={content.page} locale={locale} accommodations={accommodations} serverURL={`${protocol}://${host}`} /></>
+      return <><div className="flex items-center justify-between bg-brand-accent px-5 py-2 text-xs font-semibold text-brand-accent-foreground"><span>{locale === 'de' ? 'Entwurfsvorschau' : 'Draft preview'}</span><form action="/api/preview/exit" method="post"><Button type="submit" variant="link" size="sm">{locale === 'de' ? 'Vorschau verlassen' : 'Exit preview'}</Button></form></div><LivePage initialPage={content.page} locale={locale} accommodations={accommodations} serverURL={`${protocol}://${host}`} /></>
     }
     return <PageBlocks page={content.page} locale={locale} accommodations={accommodations} />
   }
@@ -92,7 +93,7 @@ export default async function ContentPage({ params }: Props) {
   }) ?? []
   return <main>
     <div className="site-room site-container">
-      <Link href={`/${locale}/${apartmentBase(locale)}`} className="site-back"><span aria-hidden="true">←</span>{locale === 'de' ? 'Alle Wohnungen' : 'All apartments'}</Link>
+      <Link href={`/${locale}/${apartmentBase(locale)}`} className="site-back"><ArrowLeftIcon aria-hidden="true" />{locale === 'de' ? 'Alle Wohnungen' : 'All apartments'}</Link>
       <div className="site-room__heading">
         <div><p className="site-eyebrow">{locale === 'de' ? 'Wohnen in Lustenau' : 'Stay in Lustenau'}</p><h1>{unit.name}</h1></div>
         <div className="site-room__lead"><p>{unit.teaser}</p><div className="site-room__badges"><Badge variant="outline">{locale === 'de' ? `Bis zu ${unit.sleeps} Personen` : `Up to ${unit.sleeps} guests`}</Badge>{unit.seminarCapable && <Badge variant="outline">{locale === 'de' ? 'Auch als Seminarraum' : 'Also for seminars'}</Badge>}</div></div>
@@ -100,7 +101,7 @@ export default async function ContentPage({ params }: Props) {
       {gallery.length ? <AccommodationGallery images={gallery} locale={locale} name={unit.name} /> : <div className="site-room__placeholder">{unit.name}</div>}
       <div className="site-room__details">
         <div><p className="site-eyebrow">{locale === 'de' ? 'Der Raum' : 'The space'}</p>{unit.description && <p className="site-room__description">{unit.description}</p>}</div>
-        <div className="site-room__summary"><p className="site-room__summary-label">{locale === 'de' ? 'Auf einen Blick' : 'At a glance'}</p><dl><div><dt>{locale === 'de' ? 'Gäste' : 'Guests'}</dt><dd>{locale === 'de' ? `Bis zu ${unit.sleeps} Personen` : `Up to ${unit.sleeps} guests`}</dd></div>{unit.bedSetup && <div><dt>{locale === 'de' ? 'Schlafplätze' : 'Sleeping arrangements'}</dt><dd>{unit.bedSetup}</dd></div>}</dl><a href="#anfrage" className={`${buttonVariants({ size: 'lg' })} site-action`}>{locale === 'de' ? 'Anfrage senden' : 'Send inquiry'}<span aria-hidden="true">↗</span></a></div>
+        <div className="site-room__summary"><p className="site-room__summary-label">{locale === 'de' ? 'Auf einen Blick' : 'At a glance'}</p><dl><div><dt>{locale === 'de' ? 'Gäste' : 'Guests'}</dt><dd>{locale === 'de' ? `Bis zu ${unit.sleeps} Personen` : `Up to ${unit.sleeps} guests`}</dd></div>{unit.bedSetup && <div><dt>{locale === 'de' ? 'Schlafplätze' : 'Sleeping arrangements'}</dt><dd>{unit.bedSetup}</dd></div>}</dl><ButtonLink href="#anfrage" size="lg" className="site-action">{locale === 'de' ? 'Anfrage senden' : 'Send inquiry'}<ArrowUpRightIcon aria-hidden="true" /></ButtonLink></div>
       </div>
     </div>
     <section id="anfrage" className="site-inquiry site-section"><div className="site-container"><div className="site-section-intro"><p className="site-eyebrow">{locale === 'de' ? 'Unverbindlich anfragen' : 'No-obligation inquiry'}</p><h2>{locale === 'de' ? 'Verfügbarkeit und Anfrage' : 'Availability and inquiry'}</h2></div><InquiryForm locale={locale} accommodations={accommodations} mode={unit.seminarCapable ? 'both' : 'stay'} preselectedAccommodation={unit.slug} /></div></section>

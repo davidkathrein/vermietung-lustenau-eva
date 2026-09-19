@@ -1,7 +1,7 @@
 import config from '@payload-config'
 import { getPayload } from 'payload'
 
-import { todayInVienna, validCalendarDay } from '@/lib/calendar-day'
+import { addCalendarYears, todayInVienna, validCalendarDay } from '@/lib/calendar-day'
 
 export const runtime = 'nodejs'
 
@@ -71,9 +71,12 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const today = todayInVienna()
-  if (arrival < today) return Response.json({ error: 'Date is in the past' }, { status: 400 })
+  const latestDay = addCalendarYears(today, 3)
+  if (arrival <= today) return Response.json({ error: 'Date must be in the future' }, { status: 400 })
+  if (arrival > latestDay) return Response.json({ error: 'Date is more than three years away' }, { status: 400 })
   if (kind === 'stay') {
     if (!departure || !validCalendarDay(departure)) return Response.json({ error: 'Departure required' }, { status: 400 })
+    if (departure > latestDay) return Response.json({ error: 'Date is more than three years away' }, { status: 400 })
     const nights = (Date.parse(`${departure}T00:00:00Z`) - Date.parse(`${arrival}T00:00:00Z`)) / 86_400_000
     if (nights < 2 || nights > 90) return Response.json({ error: 'Stay must be between 2 and 90 nights' }, { status: 400 })
   } else if (slugs.length !== 1) {

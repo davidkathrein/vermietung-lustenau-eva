@@ -1,7 +1,7 @@
 'use client'
 
 import { Dialog } from '@base-ui/react/dialog'
-import { ArrowLeftIcon, ArrowRightIcon, XIcon } from '@phosphor-icons/react'
+import { ArrowsOutIcon, ArrowLeftIcon, ArrowRightIcon, XIcon } from '@phosphor-icons/react'
 import { useRef, useState } from 'react'
 import type { Swiper as SwiperInstance } from 'swiper'
 import { Swiper, SwiperSlide } from 'swiper/react'
@@ -47,11 +47,12 @@ export function AccommodationGallery({ images, locale, name }: { images: Accommo
       >
         {images.map((image, index) => <SwiperSlide key={image.id}>
           <figure className="site-room-carousel__figure">
-            <button type="button" className="site-room-carousel__open" onClick={() => openLightbox(index)} aria-label={locale === 'de' ? `Bild ${index + 1} in voller Größe öffnen` : `Open image ${index + 1} at full size`}>
+            <Button type="button" variant="ghost" className="site-room-carousel__open" onClick={() => openLightbox(index)} aria-label={locale === 'de' ? `Bild ${index + 1} in voller Größe öffnen` : `Open image ${index + 1} at full size`}>
               {/* Payload's upload URL can point to local storage or Vercel Blob. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={image.src} alt={image.alt} loading={index === 0 ? 'eager' : 'lazy'} fetchPriority={index === 0 ? 'high' : undefined} />
-            </button>
+              <span className="site-room-carousel__open-label"><ArrowsOutIcon aria-hidden="true" />{locale === 'de' ? 'Bild öffnen' : 'Open image'}</span>
+            </Button>
             {image.caption && <figcaption>{image.caption}</figcaption>}
           </figure>
         </SwiperSlide>)}
@@ -63,10 +64,10 @@ export function AccommodationGallery({ images, locale, name }: { images: Accommo
           <span className="site-room-carousel__count" aria-live="polite">{String(activeIndex + 1).padStart(2, '0')} / {String(images.length).padStart(2, '0')}</span>
         </div>
         <div className="site-room-carousel__previews" aria-label={locale === 'de' ? 'Weitere Bilder' : 'More images'}>
-          {nextImages.map((index) => <button key={images[index].id} type="button" className="site-room-carousel__preview" onClick={() => mainSwiper.current?.slideToLoop(index)} aria-label={locale === 'de' ? `Bild ${index + 1} anzeigen` : `Show image ${index + 1}`}>
+          {nextImages.map((index) => <Button key={images[index].id} type="button" variant="ghost" className="site-room-carousel__preview" onClick={() => mainSwiper.current?.slideToLoop(index)} aria-label={locale === 'de' ? `Bild ${index + 1} anzeigen` : `Show image ${index + 1}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={images[index].src} alt="" loading="lazy" />
-          </button>)}
+          </Button>)}
         </div>
       </div>}
     </section>
@@ -79,7 +80,7 @@ export function AccommodationGallery({ images, locale, name }: { images: Accommo
           if (event.key === 'ArrowRight') { event.preventDefault(); lightboxSwiper.current?.slideNext() }
         }}>
           <Dialog.Title className="sr-only">{locale === 'de' ? `Bilder von ${name}` : `Photos of ${name}`}</Dialog.Title>
-          <Dialog.Close className="site-lightbox__close" aria-label={locale === 'de' ? 'Bildansicht schließen' : 'Close image viewer'}><XIcon aria-hidden="true" /></Dialog.Close>
+          <Button render={<Dialog.Close />} type="button" variant="secondary" size="icon" className="site-lightbox__close" aria-label={locale === 'de' ? 'Bildansicht schließen' : 'Close image viewer'}><XIcon aria-hidden="true" /></Button>
           {lightboxOpen && <Swiper
             className="site-lightbox__swiper"
             slidesPerView={1}

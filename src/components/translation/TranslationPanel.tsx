@@ -5,6 +5,7 @@ import { useDocumentInfo, useForm, useFormModified, useLocale, useRouteTransitio
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import type { TranslationEntity } from '@/lib/translation-fields'
 import type { ReviewCandidate } from '@/lib/translation-review'
 
@@ -137,10 +138,10 @@ export default function TranslationPanel() {
   const sourceLabel = source === 'de' ? 'Deutsch' : 'English'
   return <section className="translation-panel" aria-label={isGermanUI ? 'Inhaltssprache' : 'Content language'}>
     <div className="translation-panel__tabs" role="tablist" aria-label={isGermanUI ? 'Inhaltssprache' : 'Content language'}>
-      {(['de', 'en'] as const).map((code) => <button key={code} type="button" role="tab" aria-selected={code === current} disabled={modified || loading} onClick={() => switchLocale(code)}>{code === 'de' ? 'Deutsch' : 'English'}</button>)}
+      {(['de', 'en'] as const).map((code) => <Button key={code} type="button" role="tab" aria-selected={code === current} disabled={modified || loading} onClick={() => switchLocale(code)}>{code === 'de' ? 'Deutsch' : 'English'}</Button>)}
     </div>
     <div className="translation-panel__actions">
-      {available && <button type="button" onClick={() => void translate()} disabled={modified || loading || !canLoad}>{loading ? (isGermanUI ? 'Übersetze …' : 'Translating…') : (isGermanUI ? `Mit KI aus ${sourceLabel} übersetzen` : `Translate from ${sourceLabel} with AI`)}</button>}
+      {available && <Button type="button" onClick={() => void translate()} disabled={modified || loading || !canLoad}>{loading ? (isGermanUI ? 'Übersetze …' : 'Translating…') : (isGermanUI ? `Mit KI aus ${sourceLabel} übersetzen` : `Translate from ${sourceLabel} with AI`)}</Button>}
       {!modified && canLoad && !available && missingFields.length > 0 ? <div className="translation-panel__missing">
         <p>{isGermanUI ? `Für die Übersetzung fehlen auf ${sourceLabel} noch:` : `Still missing for translation from ${sourceLabel}:`}</p>
         <ul>{missingFields.slice(0, 3).map((path) => <li key={path}>{missingFieldName(path, isGermanUI)}</li>)}</ul>
@@ -149,6 +150,6 @@ export default function TranslationPanel() {
     </div>
     {message && <p role="status" className="translation-panel__success">{message}</p>}
     {error && <p role="alert" className="translation-panel__error">{error}</p>}
-    {candidates.length > 0 && <div className="translation-panel__review"><div className="translation-panel__review-header"><h3>{isGermanUI ? 'Übersetzung prüfen' : 'Review translation'}</h3><button type="button" onClick={acceptAll}>{isGermanUI ? 'Alles übernehmen' : 'Accept all'}</button></div>{candidates.map((field) => <article className="translation-panel__field" key={field.path}><h4>{fieldName(field.path)}</h4><div className="translation-panel__comparison"><div><strong>{isGermanUI ? 'Quelle' : 'Source'}</strong><FieldPreview value={field.source} kind={field.kind} /></div><div><strong>{isGermanUI ? 'Vorher' : 'Before'}</strong><FieldPreview value={fieldAt(getData(), field.path)} kind={field.kind} /></div><div><strong>{isGermanUI ? 'KI-Vorschlag' : 'AI suggestion'}</strong><FieldPreview value={field.candidate} kind={field.kind} /></div></div><button type="button" onClick={() => accept(field)}>{isGermanUI ? 'Dieses Feld übernehmen' : 'Accept this field'}</button></article>)}</div>}
+    {candidates.length > 0 && <div className="translation-panel__review"><div className="translation-panel__review-header"><h3>{isGermanUI ? 'Übersetzung prüfen' : 'Review translation'}</h3><Button type="button" onClick={acceptAll}>{isGermanUI ? 'Alles übernehmen' : 'Accept all'}</Button></div>{candidates.map((field) => <article className="translation-panel__field" key={field.path}><h4>{fieldName(field.path)}</h4><div className="translation-panel__comparison"><div><strong>{isGermanUI ? 'Quelle' : 'Source'}</strong><FieldPreview value={field.source} kind={field.kind} /></div><div><strong>{isGermanUI ? 'Vorher' : 'Before'}</strong><FieldPreview value={fieldAt(getData(), field.path)} kind={field.kind} /></div><div><strong>{isGermanUI ? 'KI-Vorschlag' : 'AI suggestion'}</strong><FieldPreview value={field.candidate} kind={field.kind} /></div></div><Button type="button" onClick={() => accept(field)}>{isGermanUI ? 'Dieses Feld übernehmen' : 'Accept this field'}</Button></article>)}</div>}
   </section>
 }
