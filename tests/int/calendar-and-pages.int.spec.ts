@@ -1,6 +1,6 @@
 import config from '@/payload.config'
 import { getPayload } from 'payload'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { blocksConflict } from '../../src/hooks/syncInquiryBlock'
 import { calendarFeed, calendarToken, validCalendarToken } from '../../src/lib/calendar-export'
@@ -52,6 +52,36 @@ describe('shared apartment and seminar calendar', () => {
         for (const block of blocks.docs) await payload.delete({ collection: 'manual-blocks', id: block.id })
         await payload.delete({ collection: 'inquiries', id: inquiryId })
       }
+      await payload.delete({ collection: 'accommodations', id: unit.id })
+    }
+  })
+
+  it('rejects a known platform block even when the other feed is unavailable and the exception is set', async () => {
+    const payload = await getPayload({ config })
+    const unit = await payload.create({
+      collection: 'accommodations', locale: 'de', draft: true,
+      data: {
+        slug: `partial-feed-${Date.now()}`, name: 'Prüfwohnung', teaser: 'Ein Test', sleeps: 2,
+        ical: { airbnb: 'https://www.airbnb.com/calendar/ical/test.ics', booking: 'https://ical.booking.com/test.ics' },
+      },
+    })
+    const inquiry = await payload.create({
+      collection: 'inquiries',
+      data: { kind: 'stay', accommodations: [unit.id], arrival: '2026-11-05', departure: '2026-11-07', name: 'Test Person', email: 'partial-feed@example.invalid', status: 'new' },
+    })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) =>
+      String(url).includes('airbnb.com')
+        ? new Response('BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:occupied\nDTSTART;VALUE=DATE:20261105\nDTEND;VALUE=DATE:20261106\nEND:VEVENT\nEND:VCALENDAR')
+        : new Response('Feed unavailable', { status: 503 }),
+    )
+    try {
+      await expect(payload.update({ collection: 'inquiries', id: inquiry.id, data: { status: 'confirmed', confirmDespiteUnknown: true } }))
+        .rejects.toThrow('Plattform-Kalender meldet')
+      const blocks = await payload.find({ collection: 'manual-blocks', where: { inquiry: { equals: inquiry.id } } })
+      expect(blocks.docs).toHaveLength(0)
+    } finally {
+      fetchMock.mockRestore()
+      await payload.delete({ collection: 'inquiries', id: inquiry.id })
       await payload.delete({ collection: 'accommodations', id: unit.id })
     }
   })

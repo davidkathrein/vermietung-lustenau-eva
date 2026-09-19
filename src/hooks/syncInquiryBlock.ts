@@ -64,8 +64,8 @@ export const syncInquiryBlock: CollectionAfterChangeHook<Inquiry> = async ({ doc
     const feedStart = usage === 'seminar' ? previousDay(start) : start
     const feedThrough = usage === 'seminar' ? start : previousDay(end)
     const availability = await getAvailability(unit, feedStart, feedThrough)
+    if (availability.blockedDates.some((blockedDay) => blockedDay >= feedStart && blockedDay <= feedThrough)) throw new Error(`Plattform-Kalender meldet ${unit.name} im gewählten Zeitraum als belegt.`)
     if (availability.state !== 'ready' && !doc.confirmDespiteUnknown) throw new Error(`Plattform-Verfügbarkeit für ${unit.name} ist unbekannt. Vor einer Zusage manuell prüfen und die Ausnahme bestätigen.`)
-    if (availability.state === 'ready' && availability.blockedDates.some((blockedDay) => blockedDay >= feedStart && blockedDay <= feedThrough)) throw new Error(`Plattform-Kalender meldet ${unit.name} im gewählten Zeitraum als belegt.`)
 
     const data = { accommodation: unitID, inquiry: doc.id, startDate: start, endDate: end, usage, active: true, reason: `Zusage Anfrage #${doc.id}` } as const
     const existing = ownByUnit.get(unitID)

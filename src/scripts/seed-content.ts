@@ -9,6 +9,7 @@ import config from '../payload.config'
 
 const payload = await getPayload({ config })
 type Layout = Page['layout']
+const newlyCreatedPages = new Set<number>()
 const rich = (value: string) => ({ root: { type: 'root', version: 1, format: '', indent: 0, direction: 'ltr', children: [{ type: 'paragraph', version: 1, format: '', indent: 0, direction: 'ltr', children: [{ type: 'text', version: 1, format: 0, mode: 'normal', style: '', detail: 0, text: value }] }] } })
 
 async function seedImage(filename: string, germanAlt: string, englishAlt: string): Promise<number> {
@@ -44,6 +45,8 @@ async function addMissingGalleryImages(id: number, imageIDs: number[]) {
   const accommodation = await payload.findByID({ collection: 'accommodations', id, locale: 'de', depth: 0 })
   const gallery = accommodation.gallery ?? []
   const existingIDs = new Set(gallery.map(({ image }) => typeof image === 'number' ? image : image?.id))
+  // Once an editor replaces the seed gallery, later builds must not restore concept photos.
+  if (gallery.length > 0 && !existingIDs.has(imageIDs[0])) return
   const missing = imageIDs.filter((image) => !existingIDs.has(image))
   if (missing.length) {
     await payload.update({
@@ -57,6 +60,7 @@ async function addMissingGalleryImages(id: number, imageIDs: number[]) {
 }
 
 async function addMissingPageImages(id: number, imagesByIndex: Record<number, number>) {
+  if (!newlyCreatedPages.has(id)) return
   for (const locale of ['de', 'en'] as const) {
     const saved = await payload.findByID({ collection: 'pages', id, locale, fallbackLocale: false, depth: 0 })
     let changed = false
@@ -86,23 +90,9 @@ function withIds(layout: Layout, reference: Layout): Layout {
 
 async function page(internalName: string, de: { slug: string; title: string; description: string; layout: Layout }, en: { slug: string; title: string; description: string; layout: Layout }) {
   const found = await payload.find({ collection: 'pages', where: { internalName: { equals: internalName } }, limit: 1, depth: 0 })
-  if (found.docs[0]) {
-    const existing = found.docs[0]
-    const english = await payload.findByID({ collection: 'pages', id: existing.id, locale: 'en', fallbackLocale: false, depth: 0 })
-    if (english.slug === en.slug && english.title === en.title && existing._status === 'published') return existing
-    if (english.slug !== en.slug || english.title !== en.title || existing._status === 'draft') {
-      if (existing._status === 'draft') await payload.update({ collection: 'pages', id: existing.id, locale: 'de', draft: true, data: { slug: de.slug, title: de.title, seo: { metaTitle: de.title, metaDescription: de.description }, layout: withIds(de.layout, existing.layout) } })
-      const current = await payload.findByID({ collection: 'pages', id: existing.id, locale: 'de', draft: true, depth: 0 })
-      const translated = withIds(en.layout, current.layout)
-      if (existing._status === 'draft') {
-        await payload.update({ collection: 'pages', id: existing.id, locale: 'en', draft: true, data: { slug: en.slug, title: en.title, seo: { metaTitle: en.title, metaDescription: en.description }, layout: translated } })
-        await payload.update({ collection: 'pages', id: existing.id, locale: 'de', data: { _status: 'published' } })
-      }
-      await payload.update({ collection: 'pages', id: existing.id, locale: 'en', data: { slug: en.slug, title: en.title, seo: { metaTitle: en.title, metaDescription: en.description }, layout: translated, _status: 'published' } })
-    }
-    return payload.findByID({ collection: 'pages', id: existing.id, locale: 'de', depth: 0 })
-  }
+  if (found.docs[0]) return found.docs[0]
   const created = await payload.create({ collection: 'pages', locale: 'de', draft: true, data: { internalName, slug: de.slug, title: de.title, seo: { metaTitle: de.title, metaDescription: de.description }, layout: de.layout } })
+  newlyCreatedPages.add(created.id)
   const translated = withIds(en.layout, created.layout)
   await payload.update({ collection: 'pages', id: created.id, locale: 'en', draft: true, data: { slug: en.slug, title: en.title, seo: { metaTitle: en.title, metaDescription: en.description }, layout: translated } })
   await payload.update({ collection: 'pages', id: created.id, locale: 'de', data: { _status: 'published' } })

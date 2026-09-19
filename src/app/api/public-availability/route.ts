@@ -20,6 +20,9 @@ export async function GET(request: Request): Promise<Response> {
   }
   const dayCount = (Date.parse(`${through}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000
   if (dayCount > 366) return Response.json({ error: 'Date range exceeds one year' }, { status: 400 })
+  const nextDay = new Date(`${through}T12:00:00Z`)
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1)
+  const lastRelevantBlockStart = nextDay.toISOString().slice(0, 10)
 
   const payload = await getPayload({ config })
   const { docs } = await payload.find({
@@ -39,7 +42,7 @@ export async function GET(request: Request): Promise<Response> {
       collection: 'manual-blocks',
       where: {
         and: [
-          { startDate: { less_than_equal: `${through}T23:59:59.999Z` } },
+          { startDate: { less_than_equal: `${lastRelevantBlockStart}T23:59:59.999Z` } },
           { endDate: { greater_than: `${from}T00:00:00.000Z` } },
           { active: { equals: true } },
         ],

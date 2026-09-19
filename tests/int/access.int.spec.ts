@@ -54,4 +54,28 @@ describe('public access', () => {
       await payload.delete({ collection: 'accommodations', id: unit.id })
     }
   })
+
+  it('includes the preceding day of a seminar at the end of the requested range', async () => {
+    const payload = await getPayload({ config })
+    const slug = `seminar-edge-${Date.now()}`
+    const unit = await publishUnit(payload, slug)
+    const block = await payload.create({
+      collection: 'manual-blocks',
+      data: {
+        accommodation: unit.id,
+        startDate: '2026-10-05T00:00:00.000Z',
+        endDate: '2026-10-06T00:00:00.000Z',
+        usage: 'seminar',
+        reason: 'Seminar',
+      },
+    })
+    try {
+      const response = await getPublicAvailability(new Request('http://localhost/api/public-availability?from=2026-10-04&through=2026-10-04'))
+      const body = await response.json()
+      expect(body.units.find((candidate: { slug: string }) => candidate.slug === slug)?.blockedDates).toEqual(['2026-10-04'])
+    } finally {
+      await payload.delete({ collection: 'manual-blocks', id: block.id })
+      await payload.delete({ collection: 'accommodations', id: unit.id })
+    }
+  })
 })
