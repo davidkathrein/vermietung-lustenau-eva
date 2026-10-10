@@ -1,6 +1,5 @@
-import { ArrowUpRightIcon } from '@phosphor-icons/react'
-
 import { ButtonLink } from '@/components/ui/button'
+import { ArrowUpRightIcon } from '@/components/ui/link-icons'
 import { hrefForLink, type LinkValue } from '@/lib/href'
 import type { SiteLocale } from '@/lib/locale'
 

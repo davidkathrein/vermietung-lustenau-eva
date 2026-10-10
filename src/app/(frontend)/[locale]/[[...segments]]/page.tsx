@@ -12,8 +12,10 @@ import { PageBlocks } from '@/components/site/PageBlocks'
 import { Badge } from '@/components/ui/badge'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { ArrowLeftIcon, ArrowUpRightIcon } from '@/components/ui/link-icons'
-import { apartmentBase, isSiteLocale, type SiteLocale } from '@/lib/locale'
-import { getPublicAccommodationBySlug, getPublicAccommodations, getPublicHomepage, getPublicPageBySlug, getRedirectTarget } from '@/lib/public-content'
+import { accommodationPath, apartmentBase, isSiteLocale, pagePath, type SiteLocale } from '@/lib/locale'
+import { publicImage } from '@/lib/media'
+import { getPublicAccommodationBySlug, getPublicAccommodations, getPublicHomepage, getPublicLocalizedRoutes, getPublicPageBySlug, getRedirectTarget } from '@/lib/public-content'
+import { isSiteIndexable } from '@/lib/site-url'
 import type { Accommodation, Page } from '@/payload-types'
 
 type Props = { params: Promise<{ locale: string; segments?: string[] }> }
@@ -51,15 +53,39 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, segments = [] } = await params
   if (!isSiteLocale(locale)) return {}
   const content = await resolveContent(locale, segments)
-  if (!content) return {}
+  if (!content) return { robots: { index: false, follow: false } }
+  const siteIndexable = isSiteIndexable()
+  const currentPath = content.type === 'accommodation'
+    ? accommodationPath(locale, content.accommodation.slug)
+    : pagePath(locale, content.page.internalName, content.page.slug)
+  const route = content.type === 'page' && content.preview
+    ? undefined
+    : (await getPublicLocalizedRoutes()).find((candidate) => candidate[locale] === currentPath)
+  const alternates = content.type === 'page' && content.preview ? undefined : {
+    canonical: currentPath,
+    languages: route ? { de: route.de, en: route.en, 'x-default': route.de } : undefined,
+  }
   if (content.type === 'accommodation') {
-    return { title: content.accommodation.name, description: content.accommodation.teaser, robots: { index: true, follow: true } }
+    return {
+      title: content.accommodation.name,
+      description: content.accommodation.teaser,
+      alternates,
+      robots: { index: siteIndexable, follow: siteIndexable },
+      openGraph: { title: content.accommodation.name, description: content.accommodation.teaser, url: currentPath, locale },
+    }
   }
   return {
     title: content.page.seo?.metaTitle || content.page.title,
     description: content.page.seo?.metaDescription,
-    robots: content.preview ? { index: false, follow: false } : { index: true, follow: true },
-    openGraph: content.page.seo?.image && typeof content.page.seo.image === 'object' && content.page.seo.image.url ? { images: [content.page.seo.image.url] } : undefined,
+    alternates,
+    robots: content.preview ? { index: false, follow: false } : { index: siteIndexable, follow: siteIndexable },
+    openGraph: {
+      title: content.page.seo?.metaTitle || content.page.title,
+      description: content.page.seo?.metaDescription || undefined,
+      url: currentPath,
+      locale,
+      images: content.page.seo?.image && typeof content.page.seo.image === 'object' && content.page.seo.image.url ? [content.page.seo.image.url] : undefined,
+    },
   }
 }
 
@@ -89,19 +115,21 @@ export default async function ContentPage({ params }: Props) {
   const gallery = unit.gallery?.flatMap((row, index) => {
     const image = row.image
     if (!image || typeof image !== 'object' || !image.url) return []
-    return [{ id: String(row.id ?? `${image.id}-${index}`), src: image.url, alt: image.decorative ? '' : (image.alt || unit.name), caption: image.caption }]
+    const responsiveImage = publicImage(image, unit.name)
+    return responsiveImage ? [{ id: String(row.id ?? `${image.id}-${index}`), ...responsiveImage, caption: image.caption }] : []
   }) ?? []
-  return <main>
+  const floorplan = typeof unit.floorplan === 'object' && unit.floorplan?.url ? unit.floorplan : null
+  return <main id="main-content">
     <div className="site-room site-container">
       <Link href={`/${locale}/${apartmentBase(locale)}`} className="site-back"><ArrowLeftIcon aria-hidden="true" />{locale === 'de' ? 'Alle Wohnungen' : 'All apartments'}</Link>
       <div className="site-room__heading">
         <div><p className="site-eyebrow">{locale === 'de' ? 'Wohnen in Lustenau' : 'Stay in Lustenau'}</p><h1>{unit.name}</h1></div>
-        <div className="site-room__lead"><p>{unit.teaser}</p><div className="site-room__badges"><Badge variant="outline">{locale === 'de' ? `Bis zu ${unit.sleeps} Personen` : `Up to ${unit.sleeps} guests`}</Badge>{unit.seminarCapable && <Badge variant="outline">{locale === 'de' ? 'Auch als Seminarraum' : 'Also for seminars'}</Badge>}</div></div>
+        <div className="site-room__lead"><p>{unit.teaser}</p><div className="site-room__badges"><Badge variant="outline">{locale === 'de' ? `Bis zu ${unit.sleeps} Personen` : `Up to ${unit.sleeps} guests`}</Badge>{unit.sizeSqm && <Badge variant="outline">{unit.sizeSqm} m²</Badge>}{unit.seminarCapable && <Badge variant="outline">{locale === 'de' ? 'Auch als Seminarraum' : 'Also for seminars'}</Badge>}</div></div>
       </div>
       {gallery.length ? <AccommodationGallery images={gallery} locale={locale} name={unit.name} /> : <div className="site-room__placeholder">{unit.name}</div>}
       <div className="site-room__details">
         <div><p className="site-eyebrow">{locale === 'de' ? 'Der Raum' : 'The space'}</p>{unit.description && <p className="site-room__description">{unit.description}</p>}</div>
-        <div className="site-room__summary"><p className="site-room__summary-label">{locale === 'de' ? 'Auf einen Blick' : 'At a glance'}</p><dl><div><dt>{locale === 'de' ? 'Gäste' : 'Guests'}</dt><dd>{locale === 'de' ? `Bis zu ${unit.sleeps} Personen` : `Up to ${unit.sleeps} guests`}</dd></div>{unit.bedSetup && <div><dt>{locale === 'de' ? 'Schlafplätze' : 'Sleeping arrangements'}</dt><dd>{unit.bedSetup}</dd></div>}</dl><ButtonLink href="#anfrage" size="lg" className="site-action">{locale === 'de' ? 'Anfrage senden' : 'Send inquiry'}<ArrowUpRightIcon aria-hidden="true" /></ButtonLink></div>
+        <div className="site-room__summary"><p className="site-room__summary-label">{locale === 'de' ? 'Auf einen Blick' : 'At a glance'}</p><dl><div><dt>{locale === 'de' ? 'Gäste' : 'Guests'}</dt><dd>{locale === 'de' ? `Bis zu ${unit.sleeps} Personen` : `Up to ${unit.sleeps} guests`}</dd></div>{unit.sizeSqm && <div><dt>{locale === 'de' ? 'Größe' : 'Size'}</dt><dd>{unit.sizeSqm} m²</dd></div>}{unit.bedSetup && <div><dt>{locale === 'de' ? 'Schlafplätze' : 'Sleeping arrangements'}</dt><dd>{unit.bedSetup}</dd></div>}{unit.seminarCapable && unit.seminarCapacity && <div><dt>{locale === 'de' ? 'Seminar' : 'Seminar'}</dt><dd>{locale === 'de' ? `Bis zu ${unit.seminarCapacity} Personen` : `Up to ${unit.seminarCapacity} people`}</dd></div>}</dl><div className="site-room__summary-actions"><ButtonLink href="#anfrage" size="lg" className="site-action">{locale === 'de' ? 'Anfrage senden' : 'Send inquiry'}<ArrowUpRightIcon aria-hidden="true" /></ButtonLink>{floorplan && <ButtonLink href={floorplan.url!} target="_blank" rel="noopener noreferrer" variant="outline" size="lg" className="site-action">{locale === 'de' ? 'Grundriss ansehen' : 'View floor plan'}<span className="sr-only"> ({locale === 'de' ? 'öffnet in neuem Tab' : 'opens in a new tab'})</span><ArrowUpRightIcon aria-hidden="true" /></ButtonLink>}</div></div>
       </div>
     </div>
     <section id="anfrage" className="site-inquiry site-section"><div className="site-container"><div className="site-section-intro"><p className="site-eyebrow">{locale === 'de' ? 'Unverbindlich anfragen' : 'No-obligation inquiry'}</p><h2>{locale === 'de' ? 'Verfügbarkeit und Anfrage' : 'Availability and inquiry'}</h2></div><InquiryForm locale={locale} accommodations={accommodations} mode={unit.seminarCapable ? 'both' : 'stay'} preselectedAccommodation={unit.slug} /></div></section>

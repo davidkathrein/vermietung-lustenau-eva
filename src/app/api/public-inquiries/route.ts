@@ -1,106 +1,80 @@
 import config from '@payload-config'
 import { getPayload } from 'payload'
 
-import { addCalendarYears, todayInVienna, validCalendarDay } from '@/lib/calendar-day'
+import { INQUIRY_RATE_LIMIT, MAX_INQUIRY_ACCOMMODATIONS, validatePublicInquiry, type InquiryErrorCode } from '@/lib/inquiry'
 
 export const runtime = 'nodejs'
 
-type InquiryInput = {
-  locale?: unknown
-  kind?: unknown
-  accommodationSlugs?: unknown
-  arrival?: unknown
-  departure?: unknown
-  name?: unknown
-  email?: unknown
-  phone?: unknown
-  guests?: unknown
-  message?: unknown
-  company?: unknown
-}
-
-function text(value: unknown, maxLength: number): string | null {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim()
-  return trimmed.length <= maxLength ? trimmed : null
+function errorResponse(error: InquiryErrorCode, status = 400) {
+  return Response.json({ error }, { status })
 }
 
 export async function POST(request: Request): Promise<Response> {
   if (process.env.NODE_ENV === 'production' && process.env.ENABLE_PUBLIC_INQUIRIES !== 'true') {
-    return Response.json({ error: 'Inquiries are not enabled' }, { status: 503 })
+    return Response.json({ error: 'feature_disabled' }, { status: 503 })
   }
   if (!request.headers.get('content-type')?.startsWith('application/json')) {
-    return Response.json({ error: 'Expected JSON' }, { status: 415 })
+    return Response.json({ error: 'unsupported_media_type' }, { status: 415 })
   }
 
   const raw = await request.text()
-  if (raw.length > 8_000) return Response.json({ error: 'Request too large' }, { status: 413 })
+  if (raw.length > 8_000) return Response.json({ error: 'request_too_large' }, { status: 413 })
 
-  let input: InquiryInput
+  let input: unknown
   try {
-    input = JSON.parse(raw) as InquiryInput
+    input = JSON.parse(raw) as unknown
   } catch {
-    return Response.json({ error: 'Invalid JSON' }, { status: 400 })
+    return Response.json({ error: 'invalid_json' }, { status: 400 })
   }
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    return Response.json({ error: 'Invalid request' }, { status: 400 })
+    return errorResponse('invalid_inquiry')
   }
-  if (input.company) return Response.json({ ok: true }, { status: 202 })
+  if ((input as Record<string, unknown>).company) return Response.json({ ok: true }, { status: 202 })
 
-  const kind = input.kind
-  const locale = input.locale === 'en' ? 'en' : 'de'
-  const slugs = input.accommodationSlugs
-  const arrival = text(input.arrival, 10)
-  const departure = text(input.departure, 10)
-  const name = text(input.name, 120)
-  const email = text(input.email, 254)
-  const phone = text(input.phone, 40)
-  const message = text(input.message, 2_000)
-  const guests = input.guests
-
-  if ((kind !== 'stay' && kind !== 'seminar') ||
-    !Array.isArray(slugs) || slugs.length < 1 || slugs.length > 3 ||
-    !slugs.every((slug) => typeof slug === 'string' && /^[a-z0-9-]{1,80}$/.test(slug)) ||
-    new Set(slugs).size !== slugs.length ||
-    !arrival || !validCalendarDay(arrival) ||
-    !departure || !validCalendarDay(departure) ||
-    !name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-    (phone === null && input.phone !== undefined) ||
-    (message === null && input.message !== undefined) ||
-    !Number.isInteger(guests) || (guests as number) < 1 || (guests as number) > 20) {
-    return Response.json({ error: 'Invalid inquiry' }, { status: 400 })
-  }
-
-  const today = todayInVienna()
-  const latestDay = addCalendarYears(today, 3)
-  if (arrival <= today) return Response.json({ error: 'Date must be in the future' }, { status: 400 })
-  if (arrival > latestDay) return Response.json({ error: 'Date is more than three years away' }, { status: 400 })
-  if (departure > latestDay) return Response.json({ error: 'Date is more than three years away' }, { status: 400 })
-  const dayDifference = (Date.parse(`${departure}T00:00:00Z`) - Date.parse(`${arrival}T00:00:00Z`)) / 86_400_000
-  if (kind === 'stay') {
-    const nights = dayDifference
-    if (nights < 2 || nights > 90) return Response.json({ error: 'Stay must be between 2 and 90 nights' }, { status: 400 })
-  } else {
-    const seminarDays = dayDifference + 1
-    if (seminarDays < 1 || seminarDays > 90) return Response.json({ error: 'Seminar must be between 1 and 90 days' }, { status: 400 })
-    if (slugs.length !== 1) return Response.json({ error: 'A seminar uses exactly one room' }, { status: 400 })
-  }
+  const validation = validatePublicInquiry(input)
+  if (!validation.ok) return errorResponse(validation.error)
+  const { accommodationSlugs, arrival, departure, email, guests, kind, locale, message, name, phone } = validation.value
 
   const payload = await getPayload({ config })
   const { docs } = await payload.find({
     collection: 'accommodations',
-    where: { and: [{ slug: { in: slugs as string[] } }, { published: { equals: true } }, { _status: { equals: 'published' } }] },
+    where: { and: [{ slug: { in: accommodationSlugs } }, { published: { equals: true } }, { _status: { equals: 'published' } }] },
     locale,
     fallbackLocale: false,
     depth: 0,
-    limit: 3,
+    limit: MAX_INQUIRY_ACCOMMODATIONS,
   })
-  if (docs.length !== slugs.length) return Response.json({ error: 'Unknown accommodation' }, { status: 400 })
-  if (kind === 'seminar' && (!docs[0].seminarCapable || (guests as number) > (docs[0].seminarCapacity || 10))) {
-    return Response.json({ error: 'Seminar room unavailable' }, { status: 400 })
+  if (docs.length !== accommodationSlugs.length) return errorResponse('unknown_accommodation')
+  if (kind === 'seminar' && (!docs[0].seminarCapable || guests > (docs[0].seminarCapacity || 10))) {
+    return errorResponse('seminar_unavailable')
   }
-  if (kind === 'stay' && (guests as number) > docs.reduce((total, unit) => total + unit.sleeps, 0)) {
-    return Response.json({ error: 'Too many guests' }, { status: 400 })
+  if (kind === 'stay' && guests > docs.reduce((total, unit) => total + unit.sleeps, 0)) {
+    return errorResponse('too_many_guests')
+  }
+
+  const now = Date.now()
+  const [emailCount, globalCount] = await Promise.all([
+    payload.count({
+      collection: 'inquiries',
+      where: {
+        and: [
+          { email: { equals: email } },
+          { createdAt: { greater_than: new Date(now - INQUIRY_RATE_LIMIT.email.windowMinutes * 60_000).toISOString() } },
+        ],
+      },
+    }),
+    payload.count({
+      collection: 'inquiries',
+      where: {
+        createdAt: { greater_than: new Date(now - INQUIRY_RATE_LIMIT.global.windowMinutes * 60_000).toISOString() },
+      },
+    }),
+  ])
+  if (emailCount.totalDocs >= INQUIRY_RATE_LIMIT.email.maximum || globalCount.totalDocs >= INQUIRY_RATE_LIMIT.global.maximum) {
+    return Response.json({ error: 'rate_limited' satisfies InquiryErrorCode }, {
+      status: 429,
+      headers: { 'Retry-After': String(INQUIRY_RATE_LIMIT.email.windowMinutes * 60) },
+    })
   }
 
   await payload.create({
@@ -113,10 +87,37 @@ export async function POST(request: Request): Promise<Response> {
       name,
       email,
       phone: phone || undefined,
-      guests: guests as number,
+      guests,
       message: message || undefined,
       status: 'new',
     },
   })
+
+  if (process.env.RESEND_API_KEY && process.env.EMAIL_FROM) {
+    try {
+      const settings = await payload.findGlobal({ slug: 'site-settings', locale: 'de', fallbackLocale: false, depth: 0 })
+      const recipients = [...new Set([process.env.SUPPORT_EMAIL, settings.contactEmail].filter((value): value is string => Boolean(value)))]
+      if (recipients.length > 0) {
+        const units = docs.map((unit) => unit.name).join(', ')
+        const subject = `Neue ${kind === 'seminar' ? 'Seminaranfrage' : 'Aufenthaltsanfrage'} von ${name}`
+        const lines = [
+          subject,
+          '',
+          `Unterkunft: ${units}`,
+          `Zeitraum: ${arrival} bis ${departure}`,
+          `Personen: ${guests}`,
+          `E-Mail: ${email}`,
+          phone ? `Telefon: ${phone}` : null,
+          message ? `Nachricht:\n${message}` : null,
+          '',
+          'Die Anfrage wurde im Payload-Admin gespeichert und ist noch keine Buchung.',
+        ].filter((line): line is string => line !== null)
+
+        await payload.sendEmail({ to: recipients, subject, text: lines.join('\n') })
+      }
+    } catch {
+      console.error('Inquiry notification email failed after the inquiry was saved')
+    }
+  }
   return Response.json({ ok: true }, { status: 201 })
 }

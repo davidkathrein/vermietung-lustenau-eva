@@ -24,7 +24,7 @@ describe('public inquiry date boundaries', () => {
   it('rejects today because inquiries must be in the future', async () => {
     const response = await POST(inquiry(todayInVienna()))
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({ error: 'Date must be in the future' })
+    await expect(response.json()).resolves.toEqual({ error: 'date_not_future' })
   })
 
   it('rejects dates beyond the rolling three-year boundary', async () => {
@@ -32,7 +32,7 @@ describe('public inquiry date boundaries', () => {
     const arrival = addCalendarDays(addCalendarYears(today, 3), 1)
     const response = await POST(inquiry(arrival))
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({ error: 'Date is more than three years away' })
+    await expect(response.json()).resolves.toEqual({ error: 'date_too_far' })
   })
 
   it('also applies the three-year boundary to departure', async () => {
@@ -40,7 +40,7 @@ describe('public inquiry date boundaries', () => {
     const latestDay = addCalendarYears(today, 3)
     const response = await POST(inquiry(addCalendarDays(latestDay, -2), addCalendarDays(latestDay, 1)))
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({ error: 'Date is more than three years away' })
+    await expect(response.json()).resolves.toEqual({ error: 'date_too_far' })
   })
 
   it('rejects seminar ranges longer than 90 days', async () => {
@@ -55,6 +55,13 @@ describe('public inquiry date boundaries', () => {
       }),
     }))
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({ error: 'Seminar must be between 1 and 90 days' })
+    await expect(response.json()).resolves.toEqual({ error: 'seminar_length' })
+  })
+
+  it('rejects a departure before a stay starts', async () => {
+    const arrival = addCalendarDays(todayInVienna(), 4)
+    const response = await POST(inquiry(arrival, addCalendarDays(arrival, -1)))
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ error: 'stay_length' })
   })
 })

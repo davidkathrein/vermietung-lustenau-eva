@@ -9,11 +9,12 @@ import 'swiper/css'
 
 import { Button } from '@/components/ui/button'
 import type { SiteLocale } from '@/lib/locale'
+import type { PublicImage } from '@/lib/media'
 
-export type AccommodationGalleryImage = {
+import { ResponsiveImage } from './ResponsiveImage'
+
+export type AccommodationGalleryImage = PublicImage & {
   id: string
-  src: string
-  alt: string
   caption?: string | null
 }
 
@@ -25,6 +26,7 @@ export function AccommodationGallery({ images, locale, name }: { images: Accommo
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const multiple = images.length > 1
   const nextImages = Array.from({ length: Math.min(images.length - 1, 4) }, (_, offset) => (activeIndex + offset + 1) % images.length)
+  const previewImage = (image: AccommodationGalleryImage): PublicImage => image.preview ?? image
 
   function openLightbox(index: number) {
     setLightboxIndex(index)
@@ -48,9 +50,7 @@ export function AccommodationGallery({ images, locale, name }: { images: Accommo
         {images.map((image, index) => <SwiperSlide key={image.id}>
           <figure className="site-room-carousel__figure">
             <Button type="button" variant="ghost" className="site-room-carousel__open" onClick={() => openLightbox(index)} aria-label={locale === 'de' ? `Bild ${index + 1} in voller Größe öffnen` : `Open image ${index + 1} at full size`}>
-              {/* Payload's upload URL can point to local storage or Vercel Blob. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={image.src} alt={image.alt} loading={index === 0 ? 'eager' : 'lazy'} fetchPriority={index === 0 ? 'high' : undefined} />
+              <ResponsiveImage image={index === activeIndex ? image : previewImage(image)} sizes="(max-width: 760px) calc(100vw - 2rem), min(1200px, calc(100vw - 3rem))" eager={index === 0} />
             </Button>
             {image.caption && <figcaption>{image.caption}</figcaption>}
           </figure>
@@ -64,8 +64,7 @@ export function AccommodationGallery({ images, locale, name }: { images: Accommo
         </div>
         <div className="site-room-carousel__previews" aria-label={locale === 'de' ? 'Weitere Bilder' : 'More images'}>
           {nextImages.map((index) => <Button key={images[index].id} type="button" variant="ghost" className="site-room-carousel__preview" onClick={() => mainSwiper.current?.slideToLoop(index)} aria-label={locale === 'de' ? `Bild ${index + 1} anzeigen` : `Show image ${index + 1}`}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={images[index].src} alt="" loading="lazy" />
+            <ResponsiveImage image={{ ...previewImage(images[index]), alt: '' }} sizes="7rem" />
           </Button>)}
         </div>
       </div>}
@@ -88,10 +87,9 @@ export function AccommodationGallery({ images, locale, name }: { images: Accommo
             onSwiper={(swiper) => { lightboxSwiper.current = swiper }}
             onSlideChange={(swiper) => setLightboxIndex(swiper.realIndex)}
           >
-            {images.map((image) => <SwiperSlide key={image.id}>
+            {images.map((image, index) => <SwiperSlide key={image.id}>
               <figure className="site-lightbox__figure">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={image.src} alt={image.alt} />
+                <ResponsiveImage image={index === lightboxIndex ? image : previewImage(image)} sizes="100vw" eager={index === lightboxIndex} />
                 {image.caption && <figcaption>{image.caption}</figcaption>}
               </figure>
             </SwiperSlide>)}
