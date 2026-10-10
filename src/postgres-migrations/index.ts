@@ -8,6 +8,7 @@ import * as migration_20260918_201700_instagram_source_profile from './20260918_
 import * as migration_20260919_110206_instagram_block from './20260919_110206_instagram_block';
 import * as migration_20260919_144445_media_alt_text from './20260919_144445_media_alt_text';
 import * as migration_20260919_161104_optional_decorative_alt from './20260919_161104_optional_decorative_alt';
+import * as migration_20261010_062401_auth_reset_timestamp from './20261010_062401_auth_reset_timestamp';
 
 export const migrations = [
   {
@@ -58,6 +59,11 @@ export const migrations = [
   {
     up: migration_20260919_161104_optional_decorative_alt.up,
     down: migration_20260919_161104_optional_decorative_alt.down,
-    name: '20260919_161104_optional_decorative_alt'
+    name: '20260919_161104_optional_decorative_alt',
+  },
+  {
+    up: migration_20261010_062401_auth_reset_timestamp.up,
+    down: migration_20261010_062401_auth_reset_timestamp.down,
+    name: '20261010_062401_auth_reset_timestamp'
   },
 ];

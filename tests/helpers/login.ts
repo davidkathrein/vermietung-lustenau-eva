@@ -15,7 +15,7 @@ export interface LoginOptions {
  */
 export async function login({
   page,
-  serverURL = process.env.E2E_BASE_URL || 'http://localhost:3000',
+  serverURL = 'http://127.0.0.1:3102',
   user,
 }: LoginOptions): Promise<void> {
   await page.goto(`${serverURL}/admin/login`)

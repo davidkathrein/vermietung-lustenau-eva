@@ -18,7 +18,7 @@ async function expectClearInteractiveAffordances(page: import('@playwright/test'
   }))
   expect(unclearLinks).toEqual([])
 
-  const textLinks = page.locator('a[href]:not([data-slot="button"])')
+  const textLinks = page.locator('a[href]:not([data-slot="button"]):not(.site-skip-link)')
   const doubleLineLinks: string[] = []
   for (let index = 0; index < await textLinks.count(); index += 1) {
     const link = textLinks.nth(index)
@@ -47,18 +47,18 @@ test('serves the bilingual homepage and redirects the language-less root permane
   await expect(page.locator('html')).toHaveAttribute('lang', 'de')
   await expect(page.getByRole('heading', { name: 'Ankommen. Durchatmen. Bleiben.' })).toBeVisible()
   await expect(page.getByRole('img', { name: 'Heller Wohnbereich mit Holztisch und Sofa' }).first()).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Wohnung 1 / Seminarraum' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Wohnung 1 / Seminarraum', exact: true })).toBeVisible()
   const germanLanguages = page.getByRole('navigation', { name: 'Sprache wählen' })
   await expect(germanLanguages).toHaveText('DE/EN')
   await expect(germanLanguages.locator('[aria-current="page"]')).toHaveText('DE')
-  await expect(page.getByRole('link', { name: 'Buchung anfragen' })).toHaveAttribute('href', '/de/kontakt#anfrage')
+  await expect(page.getByRole('banner').getByRole('link', { name: 'Anfrage senden' })).toHaveAttribute('href', '/de/kontakt#anfrage')
   await page.goto('/en')
   await expect(page.locator('html')).toHaveAttribute('lang', 'en')
   await expect(page.getByRole('heading', { name: 'Arrive. Unwind. Stay.' })).toBeVisible()
   const englishLanguages = page.getByRole('navigation', { name: 'Choose language' })
   await expect(englishLanguages).toHaveText('DE/EN')
   await expect(englishLanguages.locator('[aria-current="page"]')).toHaveText('EN')
-  await page.getByRole('link', { name: 'Request booking' }).click()
+  await page.getByRole('banner').getByRole('link', { name: 'Send inquiry' }).click()
   await expect(page).toHaveURL(/\/en\/contact#anfrage$/)
   await expect(page.locator('#anfrage')).toBeVisible()
 })
@@ -100,7 +100,7 @@ test('uses an accessible burger menu on small screens', async ({ page }) => {
   const mobileNavigation = page.getByRole('navigation', { name: 'Mobile Hauptnavigation' })
   await expect(mobileNavigation).toBeVisible()
   await expect(mobileNavigation.getByRole('link', { name: 'Wohnungen' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Buchung anfragen' })).toBeVisible()
+  await expect(page.locator('.site-mobile-menu__panel').getByRole('link', { name: 'Anfrage senden' })).toBeVisible()
 
   await mobileNavigation.getByRole('link', { name: 'Wohnungen' }).click()
   await expect(page).toHaveURL(/\/de\/wohnungen$/)
@@ -130,7 +130,7 @@ test('shows the shared seminar usage and does not claim availability without fee
   await page.goto('/de/wohnungen/wohnung-1')
   await expect(page.getByRole('heading', { name: 'Wohnung 1 / Seminarraum' })).toBeVisible()
   await expect(page.getByRole('img', { name: 'Heller Raum mit langem Tisch für Seminare' })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'Seminarraum' })).toBeVisible()
+  await expect(page.getByRole('radio', { name: 'Seminarraum' })).toBeVisible()
   await expect(page.getByText('Bitte einen gültigen Termin wählen.')).toBeVisible()
 })
 
@@ -155,16 +155,17 @@ test('shows the inquiry form immediately on the contact page', async ({ page }) 
   await expect(page.locator('.site-hero-section')).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Ihre Anfrage' })).toBeVisible()
   await expect(page.locator('.site-inquiry-form')).toBeInViewport()
-  await expect(page.getByRole('tab', { name: 'Schlafräume' })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'Seminarraum' })).toBeVisible()
+  await expect(page.getByRole('radio', { name: 'Aufenthalt' })).toBeVisible()
+  await expect(page.getByRole('radio', { name: 'Seminarraum' })).toBeVisible()
 })
 
-test('always offers sleeping rooms and seminar room in apartment inquiry forms', async ({ page }) => {
+test('limits apartment inquiry types to the uses configured for that apartment', async ({ page }) => {
   await page.goto('/de/wohnungen/wohnung-2')
 
   const inquiryForm = page.locator('.site-inquiry-form')
-  await expect(inquiryForm.getByRole('tab', { name: 'Schlafräume' })).toBeVisible()
-  await expect(inquiryForm.getByRole('tab', { name: 'Seminarraum' })).toBeVisible()
+  await expect(inquiryForm.getByRole('radio', { name: 'Aufenthalt' })).toHaveCount(0)
+  await expect(inquiryForm.getByRole('radio', { name: 'Seminarraum' })).toHaveCount(0)
+  await expect(inquiryForm.getByText('Wohnung 2')).toBeVisible()
 })
 
 test('keeps the sticky availability card below the visible header', async ({ page }) => {
@@ -175,6 +176,8 @@ test('keeps the sticky availability card below the visible header', async ({ pag
   const form = page.locator('.site-form-card')
   const availability = page.locator('.site-availability-card')
   const formTop = await form.evaluate((element) => element.getBoundingClientRect().top + window.scrollY)
+
+  await expect(availability).toBeVisible()
 
   await page.evaluate((top) => window.scrollTo(0, top + 350), formTop)
   await expect(header).toHaveAttribute('data-visible', 'false')
@@ -209,7 +212,7 @@ test('marks required inquiry fields and supports stay and seminar ranges', async
   await form.locator('#inquiry-departure').blur()
   await expect(form.getByText('3 Nächtigungen')).toBeVisible()
 
-  await page.getByRole('tab', { name: 'Seminarraum' }).click()
+  await page.getByRole('radio', { name: 'Seminarraum' }).click()
   await expect(form.getByLabel('Seminarbeginn')).toBeVisible()
   await expect(form.getByLabel('Seminarende')).toBeVisible()
   await form.locator('#inquiry-arrival').fill(seminarStart)

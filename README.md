@@ -28,7 +28,7 @@ pnpm dev
 
 Anfragen sind unverbindlich und reservieren nichts. Ein bestätigter Aufenthalt oder Seminartag erzeugt eine aktive Sperre im gemeinsamen Wohnungskalender. Eine Stornierung deaktiviert die Sperre, löscht sie aber nicht. Bekannte Konflikte blockieren eine Zusage; bei fehlender oder ausgefallener Plattform-Verbindung ist dafür eine ausdrücklich gesetzte Admin-Ausnahme nötig. Ein Seminar kollidiert auch mit einem Aufenthalt, der am Seminartag an- oder abreist.
 
-Der öffentliche Verfügbarkeitsstatus kombiniert manuelle Sperren mit Airbnb- und Booking.com-iCal-Feeds. Er behauptet bei fehlenden/fehlerhaften Feeds keine freie Verfügbarkeit. `GET /api/public-availability?locale=de&from=2026-10-01&through=2026-10-31` liefert belegte Tage und je Wohnung `ready`, `not-connected` oder `error`. Die Feed-URLs bleiben privat. `POST /api/public-inquiries` ist erst mit `ENABLE_PUBLIC_INQUIRIES=true` freigeschaltet.
+Der öffentliche Verfügbarkeitsstatus kombiniert manuelle Sperren mit Airbnb- und Booking.com-iCal-Feeds. Er behauptet bei fehlenden/fehlerhaften Feeds keine freie Verfügbarkeit. `GET /api/public-availability?locale=de&from=2026-10-01&through=2026-10-31` liefert belegte Tage und je Wohnung `ready`, `not-connected` oder `error`. Die Feed-URLs bleiben privat. `POST /api/public-inquiries` ist erst mit `ENABLE_PUBLIC_INQUIRIES=true` freigeschaltet. Jede gültige Anfrage wird im Admin gespeichert; datenbankgestützte Best-effort-Schranken begrenzen wiederholte Anfragen derselben E-Mail-Adresse und das Gesamtvolumen. Sie sind wegen paralleler Requests kein atomarer Ersatz für Bot-Schutz. Vor der öffentlichen Freischaltung muss zusätzlich ein Edge-Limit, eine WAF-Regel oder eine Challenge wie Turnstile eingerichtet werden. Bei eingerichteter Resend-Konfiguration geht eine Benachrichtigung an `SUPPORT_EMAIL` und die Kontakt-E-Mail aus den Website-Einstellungen. Ein Mailfehler verwirft die gespeicherte Anfrage nicht. Der Admin ist deshalb die maßgebliche Inbox; Resend-Fehler und neue Admin-Anfragen müssen überwacht werden, da noch keine dauerhafte Mail-Outbox mit automatischem Retry existiert.
 
 Aktive Sperren werden über einen signierten iCal-Link exportiert, damit Airbnb und Booking.com sie importieren können. Den Link zeigt das jeweilige Wohnungsformular nach Konfiguration von `ICAL_EXPORT_SECRET` an. Er enthält keine Gästedaten und kann durch Wechsel des Secrets ungültig gemacht werden. iCal-Synchronisierung ist verzögert und ersetzt keine manuelle Kontrolle vor einer Zusage.
 
@@ -40,13 +40,17 @@ Auf dem Server `BRIGHTDATA_API_KEY`, `INSTAGRAM_PROFILE_URL` (eine öffentliche 
 
 ## Vor öffentlicher Freigabe
 
-Die generierten Konzeptfotos unter `public/seed-media/` müssen vor der Freigabe durch echte Wohnungsfotos ersetzt werden. Auch Grundrisse, Kontakt-E-Mail und -Telefon, Plattform-iCal-Links sowie die Resend-Domain müssen ergänzt und mit echten Inseraten geprüft werden. Anfragen bleiben bis zur bewussten Freischaltung deaktiviert. Die Beschreibungstexte sind ebenfalls redaktionell zu prüfen.
+Die generierten Konzeptfotos unter `public/seed-media/` müssen vor der Freigabe durch echte Wohnungsfotos ersetzt werden. Auch Grundrisse, Kontakt-E-Mail und -Telefon, Plattform-iCal-Links, `NEXT_PUBLIC_SITE_URL` mit der kanonischen HTTPS-Produktionsdomain sowie die Resend-Domain müssen ergänzt und mit echten Inseraten geprüft werden. Ohne gültige Produktionsdomain bleiben robots.txt und Seiten-Metadaten absichtlich auf `noindex`. Anfragen bleiben bis zur bewussten Freischaltung deaktiviert. Die Beschreibungstexte sowie Impressum und Datenschutzhinweise sind ebenfalls redaktionell bzw. rechtlich zu prüfen.
 
 ## Prüfungen
 
 ```bash
 pnpm tsc --noEmit
-pnpm test:int
+pnpm test:run
+pnpm test:e2e
 pnpm build
 pnpm lint
+pnpm audit --prod --audit-level low
 ```
+
+Der Produktions-Audit meldet derzeit weiterhin `GHSA-vfj7-8cjw-p6xm` für `braces` über `@payloadcms/storage-vercel-blob → @payloadcms/plugin-cloud-storage → find-node-modules → findup-sync → micromatch`. Für diesen transitiven Pfad gibt es laut pnpm keinen gepatchten Release. Der betroffene Modul-Finder ist im ausgelieferten Plugin-Code nicht auf einem Request-Pfad referenziert und sein Standard-Glob ist statisch; das Risiko für diese Anwendung ist deshalb begrenzt. Die Ausnahme gilt nur für diese Advisory und diesen Pfad. Sie muss bei Payload-Upgrades erneut geprüft werden; neue Audit-Meldungen sind nicht pauschal akzeptiert.

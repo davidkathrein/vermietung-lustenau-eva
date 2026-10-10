@@ -10,6 +10,10 @@ import { POST as adminPOST } from '../../src/app/api/admin-instagram-sync/route'
 const originalKey = process.env.BRIGHTDATA_API_KEY
 const originalUrl = process.env.INSTAGRAM_PROFILE_URL
 
+function recentSnapshotStart(): string {
+  return new Date(Date.now() - 60_000).toISOString()
+}
+
 afterEach(() => {
   vi.restoreAllMocks()
   if (originalKey === undefined) delete process.env.BRIGHTDATA_API_KEY
@@ -147,7 +151,7 @@ describe('Instagram sync', () => {
       findGlobal: vi.fn(async () => ({
         snapshotId: 'snap_reconnect',
         profileUrl: 'https://www.instagram.com/example/',
-        startedAt: '2026-09-19T10:00:00.000Z',
+        startedAt: recentSnapshotStart(),
       })),
       updateGlobal: vi.fn(),
       find: vi.fn(async ({ collection }: { collection: string }) => collection === 'media'
@@ -186,7 +190,7 @@ describe('Instagram sync', () => {
       findGlobal: vi.fn(async () => ({
         snapshotId: 'snap_upgrade',
         profileUrl: 'https://www.instagram.com/example/',
-        startedAt: '2026-09-19T10:00:00.000Z',
+        startedAt: recentSnapshotStart(),
       })),
       updateGlobal: vi.fn(),
       find: vi.fn(async () => ({ docs: [{ id: 7, image: 12, sourceProfile: 'https://www.instagram.com/example/' }] })),
@@ -222,7 +226,7 @@ describe('Instagram sync', () => {
       findGlobal: vi.fn(async () => ({
         snapshotId: 'snap_editorial',
         profileUrl: 'https://www.instagram.com/example/',
-        startedAt: '2026-09-19T10:00:00.000Z',
+        startedAt: recentSnapshotStart(),
       })),
       updateGlobal: vi.fn(),
       find: vi.fn(async () => ({ docs: [{ id: 8, image: 13, sourceProfile: 'https://www.instagram.com/example/' }] })),

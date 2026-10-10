@@ -6,7 +6,7 @@ import { login } from '../helpers/login'
 
 test('switches content tabs and applies a translation to the target form', async ({ page }) => {
   test.setTimeout(75_000)
-  const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3000'
+  const baseURL = 'http://127.0.0.1:3102'
   const payload = await getPayload({ config })
   const user = { email: `translation-${Date.now()}@example.invalid`, password: 'local-test-password' }
   const admin = await payload.create({ collection: 'users', data: user })

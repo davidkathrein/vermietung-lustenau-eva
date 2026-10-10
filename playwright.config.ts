@@ -6,6 +6,8 @@ import { defineConfig, devices } from '@playwright/test'
  */
 import 'dotenv/config'
 
+const baseURL = 'http://127.0.0.1:3102'
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -21,7 +23,7 @@ export default defineConfig({
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3000',
+    baseURL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -33,8 +35,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm dev',
-    reuseExistingServer: true,
-    url: `${process.env.E2E_BASE_URL || 'http://localhost:3000'}/admin`,
+    command: 'pnpm exec next dev -H 127.0.0.1 -p 3102',
+    reuseExistingServer: false,
+    url: `${baseURL}/admin`,
   },
 })

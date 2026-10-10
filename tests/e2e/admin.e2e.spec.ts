@@ -3,7 +3,7 @@ import { login } from '../helpers/login'
 import { seedTestUser, cleanupTestUser, testUser } from '../helpers/seedUser'
 
 test.describe('Admin Panel', () => {
-  const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3000'
+  const baseURL = 'http://127.0.0.1:3102'
   let page: Page
 
   test.beforeAll(async ({ browser }) => {
