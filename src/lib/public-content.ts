@@ -56,7 +56,7 @@ export async function getPublicSettings(locale: SiteLocale) {
   return payload.findGlobal({ slug: 'site-settings', locale, fallbackLocale: false, depth: 2 })
 }
 
-export async function getPublicLocalizedRoutes(): Promise<LocalizedRoute[]> {
+export async function getPublicRouteInventory(): Promise<Partial<LocalizedRoute>[]> {
   const payload = await getPayload({ config })
   const [germanPages, englishPages, germanAccommodations, englishAccommodations] = await Promise.all([
     payload.find({ collection: 'pages', locale: 'de', fallbackLocale: false, depth: 0, limit: 100, where: { _status: { equals: 'published' } } }),
@@ -67,27 +67,39 @@ export async function getPublicLocalizedRoutes(): Promise<LocalizedRoute[]> {
 
   const englishPagesByID = new Map(englishPages.docs.map((page) => [page.id, page]))
   const englishAccommodationsByID = new Map(englishAccommodations.docs.map((unit) => [unit.id, unit]))
-  const routes: LocalizedRoute[] = []
+  const germanPageIDs = new Set(germanPages.docs.map((page) => page.id))
+  const germanAccommodationIDs = new Set(germanAccommodations.docs.map((unit) => unit.id))
+  const routes: Partial<LocalizedRoute>[] = []
 
   for (const page of germanPages.docs) {
     const englishPage = englishPagesByID.get(page.id)
-    if (!englishPage) continue
     routes.push({
       de: pagePath('de', page.internalName, page.slug),
-      en: pagePath('en', englishPage.internalName, englishPage.slug),
+      ...(englishPage && { en: pagePath('en', englishPage.internalName, englishPage.slug) }),
     })
+  }
+
+  for (const page of englishPages.docs) {
+    if (!germanPageIDs.has(page.id)) routes.push({ en: pagePath('en', page.internalName, page.slug) })
   }
 
   for (const unit of germanAccommodations.docs) {
     const englishUnit = englishAccommodationsByID.get(unit.id)
-    if (!englishUnit) continue
     routes.push({
       de: accommodationPath('de', unit.slug),
-      en: accommodationPath('en', englishUnit.slug),
+      ...(englishUnit && { en: accommodationPath('en', englishUnit.slug) }),
     })
   }
 
+  for (const unit of englishAccommodations.docs) {
+    if (!germanAccommodationIDs.has(unit.id)) routes.push({ en: accommodationPath('en', unit.slug) })
+  }
+
   return routes
+}
+
+export async function getPublicLocalizedRoutes(): Promise<LocalizedRoute[]> {
+  return (await getPublicRouteInventory()).filter((route): route is LocalizedRoute => Boolean(route.de && route.en))
 }
 
 export async function getRedirectTarget(path: string, locale: SiteLocale): Promise<string | null> {
